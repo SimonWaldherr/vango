@@ -94,3 +94,45 @@ func Example_textWatermark() {
 	fmt.Println(out.Bounds().Dx(), out.Bounds().Dy())
 	// Output: 200 80
 }
+
+// Example_newEffects demonstrates grayscale + vignette on a synthetic image
+func Example_newEffects_grayscaleVignette() {
+	// create a simple gradient image
+	img := image.NewNRGBA(image.Rect(0, 0, 200, 200))
+	for y := 0; y < 200; y++ {
+		for x := 0; x < 200; x++ {
+			i := y*img.Stride + x*4
+			img.Pix[i+0] = uint8(x)
+			img.Pix[i+1] = uint8(y)
+			img.Pix[i+2] = uint8((x + y) / 2)
+			img.Pix[i+3] = 255
+		}
+	}
+	out := vango.From(img).
+		Grayscale().
+		Vignette(0.6).
+		Image()
+
+	fmt.Println(out.Bounds().Dx(), out.Bounds().Dy())
+	// Output: 200 200
+}
+
+// Example_newEffects_embossSolarize demonstrates emboss then solarize
+func Example_newEffects_embossSolarize() {
+	img := image.NewNRGBA(image.Rect(0, 0, 120, 80))
+	for y := 0; y < 80; y++ {
+		for x := 0; x < 120; x++ {
+			i := y*img.Stride + x*4
+			img.Pix[i+0] = uint8((x * y) % 256)
+			img.Pix[i+1] = uint8((x*2 + y) % 256)
+			img.Pix[i+2] = uint8((x + y*2) % 256)
+			img.Pix[i+3] = 255
+		}
+	}
+	out := vango.From(img).
+		Emboss(0.5).
+		Solarize(128).
+		Image()
+	fmt.Println(out.Bounds().Dx(), out.Bounds().Dy())
+	// Output: 120 80
+}

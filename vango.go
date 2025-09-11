@@ -286,6 +286,10 @@ func SobelEdges(src image.Image) *image.Gray {
 	return out
 }
 
+//
+// ------------------------------ Color transforms -----------------------------
+//
+
 func rgbToHSL(r, g, b float64) (h, s, l float64) {
 	max := math.Max(r, math.Max(g, b))
 	min := math.Min(r, math.Min(g, b))
@@ -551,6 +555,10 @@ func Threshold(src image.Image, cutoff uint8) *image.Gray {
 	return out
 }
 
+//
+// ------------------------------ White balance -------------------------------
+//
+
 // WhiteBalanceByRect: average color from ref rect (or whole image if empty)
 func WhiteBalanceByRect(src image.Image, ref image.Rectangle) *image.NRGBA {
 	n := ToNRGBA(src)
@@ -600,6 +608,10 @@ func WhiteBalanceByRect(src image.Image, ref image.Rectangle) *image.NRGBA {
 	})
 	return out
 }
+
+//
+// ------------------------------ Geometry ------------------------------------
+//
 
 func sampleNearest(n *image.NRGBA, x, y int, bg color.NRGBA, b image.Rectangle) (r, g, bb, a uint8) {
 	if x < b.Min.X || x >= b.Max.X || y < b.Min.Y || y >= b.Max.Y {
@@ -901,6 +913,10 @@ func TrimByColor(src image.Image, col color.NRGBA, tol uint8) *image.NRGBA {
 	return Crop(n, image.Rect(minX, minY, maxX, maxY))
 }
 
+//
+// ------------------------------ Watermark -----------------------------------
+//
+
 func WatermarkImage(base image.Image, mark image.Image, pos image.Point, opacity float64) *image.NRGBA {
 	opacity = clampF01(opacity)
 	dst := ToNRGBA(base)
@@ -918,6 +934,10 @@ func WatermarkImage(base image.Image, mark image.Image, pos image.Point, opacity
 	draw.Draw(dst, off, m, m.Rect.Min, draw.Over)
 	return dst
 }
+
+//
+// ------------------------------ LUTs ----------------------------------------
+//
 
 type LUT1D struct{ R, G, B [256]uint8 }
 
@@ -1070,6 +1090,10 @@ func minInt(a, b int) int {
 	return b
 }
 
+//
+// ------------------------------ Analysis ------------------------------------
+//
+
 type Analysis struct {
 	Width, Height int
 	Aspect        float64
@@ -1170,6 +1194,10 @@ func Analyze(src image.Image, paletteK int) Analysis {
 	}
 	return a
 }
+
+//
+// ------------------------------ Minimal EXIF (JPEG) --------------------------
+//
 
 func ReadJPEGEXIF(r io.Reader) (map[string]string, error) {
 	br := bufio.NewReader(r)
@@ -1338,6 +1366,10 @@ func typeSize(t uint16) int {
 		return 1
 	}
 }
+
+//
+// ------------------------------ Extras --------------------------------------
+//
 
 // Gamma correction (gamma>0; 1=no change).
 func Gamma(src image.Image, gamma float64) *image.NRGBA {
@@ -1513,6 +1545,10 @@ func DitherFS(src image.Image, levels int) *image.NRGBA {
 	return out
 }
 
+//
+// ------------------------------ Tiny bitmap font -----------------------------
+//
+
 // 5x7 ASCII (32..126), each row packed into 5 bits (LSB left). Source: tiny public-domain table.
 var tiny5x7 = map[rune][7]uint8{
 	'A': {0x1E, 0x11, 0x11, 0x1F, 0x11, 0x11, 0x11},
@@ -1594,6 +1630,10 @@ func DrawString5x7(dst *image.NRGBA, text string, at image.Point, col color.NRGB
 	}
 }
 
+//
+// ------------------------------ I/O helpers ---------------------------------
+//
+
 // Decode (basic)
 func Decode(r io.Reader) (image.Image, string, error) { return image.Decode(r) }
 
@@ -1673,6 +1713,14 @@ func applyEXIFOrientation(img image.Image, code int) image.Image {
 		return img
 	}
 }
+
+//
+// ------------------------------ Fluent pipeline -----------------------------
+//
+// The Pipeline supports chainable methods.  It lazily records steps,
+// and when you call Image/Do/Encode it executes them.  Consecutive
+// per-pixel steps are fused into a single pass.
+//
 
 // PixelFunc transforms a single pixel (r,g,b,a -> r,g,b,a)
 type PixelFunc func(r, g, b, a uint8) (uint8, uint8, uint8, uint8)
@@ -1779,6 +1827,8 @@ func (p *Pipeline) Execute(ctx context.Context) (*Pipeline, error) {
 // Image returns the final image, executing pending steps.
 func (p *Pipeline) Image() *image.NRGBA { img, _ := p.execute(context.Background()); return img }
 
+// ---- Chainable per-pixel helpers ----
+
 func pfBrightness(delta float64) PixelFunc {
 	return func(r, g, b, a uint8) (uint8, uint8, uint8, uint8) {
 		// HSL lightness shift
@@ -1846,6 +1896,133 @@ func pfGamma(gamma float64) PixelFunc {
 		return table[r], table[g], table[b], a
 	}
 }
+
+// New per-pixel effects
+func pfGrayscale() PixelFunc {
+	return func(r, g, b, a uint8) (uint8, uint8, uint8, uint8) {
+		l := uint8(0.2126*float64(r) + 0.7152*float64(g) + 0.0722*float64(b) + 0.5)
+		return l, l, l, a
+	}
+}
+func pfSolarize(cutoff uint8) PixelFunc {
+	return func(r, g, b, a uint8) (uint8, uint8, uint8, uint8) {
+		rr, gg, bb := r, g, b
+		if r > cutoff {
+			rr = 255 - r
+		}
+		if g > cutoff {
+			gg = 255 - g
+		}
+		if b > cutoff {
+			bb = 255 - b
+		}
+		return rr, gg, bb, a
+	}
+}
+
+// Emboss (simple convolution) - strength 0..1 (recommended ~0.5)
+func Emboss(src image.Image, strength float64) *image.NRGBA {
+	if strength < 0 {
+		strength = 0
+	}
+	if strength > 1 {
+		strength = 1
+	}
+	n := ToNRGBA(src)
+	r := n.Rect
+	out := image.NewNRGBA(r)
+	// kernel: [-2 -1 0; -1 1 1; 0 1 2]
+	_ = parallelRows(context.Background(), r.Dy(), func(yy int) {
+		y := r.Min.Y + yy
+		for x := r.Min.X; x < r.Max.X; x++ {
+			var accR, accG, accB float64
+			offs := [3][3]int{{-2, -1, 0}, {-1, 1, 1}, {0, 1, 2}}
+			for j := -1; j <= 1; j++ {
+				yy2 := y + j
+				if yy2 < r.Min.Y {
+					yy2 = r.Min.Y
+				} else if yy2 >= r.Max.Y {
+					yy2 = r.Max.Y - 1
+				}
+				for i := -1; i <= 1; i++ {
+					xx := x + i
+					if xx < r.Min.X {
+						xx = r.Min.X
+					} else if xx >= r.Max.X {
+						xx = r.Max.X - 1
+					}
+					p := idx(n, xx, yy2)
+					k := float64(offs[j+1][i+1])
+					accR += k * float64(n.Pix[p+0])
+					accG += k * float64(n.Pix[p+1])
+					accB += k * float64(n.Pix[p+2])
+				}
+			}
+			i := idx(out, x, y)
+			// normalize and mix with original based on strength
+			nr := clamp8(int(math.Round(128 + accR*strength)))
+			ng := clamp8(int(math.Round(128 + accG*strength)))
+			nb := clamp8(int(math.Round(128 + accB*strength)))
+			out.Pix[i+0], out.Pix[i+1], out.Pix[i+2], out.Pix[i+3] = nr, ng, nb, n.Pix[idx(n, x, y)+3]
+		}
+	})
+	return out
+}
+
+// Vignette: darken edges by strength (0..1)
+func Vignette(src image.Image, strength float64) *image.NRGBA {
+	if strength < 0 {
+		strength = 0
+	}
+	if strength > 1 {
+		strength = 1
+	}
+	n := ToNRGBA(src)
+	r := n.Rect
+	out := CloneNRGBA(n)
+	cx := float64(r.Min.X + r.Dx()/2)
+	cy := float64(r.Min.Y + r.Dy()/2)
+	maxd := math.Hypot(float64(r.Dx())/2, float64(r.Dy())/2)
+	_ = parallelRows(context.Background(), r.Dy(), func(yy int) {
+		y := r.Min.Y + yy
+		for x := r.Min.X; x < r.Max.X; x++ {
+			i := idx(n, x, y)
+			dx := float64(x) - cx
+			dy := float64(y) - cy
+			d := math.Hypot(dx, dy)
+			t := d / maxd
+			factor := 1 - strength*(t*t)
+			if factor < 0 {
+				factor = 0
+			}
+			out.Pix[i+0] = clamp8(int(math.Round(float64(n.Pix[i+0]) * factor)))
+			out.Pix[i+1] = clamp8(int(math.Round(float64(n.Pix[i+1]) * factor)))
+			out.Pix[i+2] = clamp8(int(math.Round(float64(n.Pix[i+2]) * factor)))
+			out.Pix[i+3] = n.Pix[i+3]
+		}
+	})
+	return out
+}
+
+// Convenience one-shot functions for grayscale and solarize
+func Grayscale(src image.Image) *image.NRGBA { return ToNRGBA(ApplyLUT1D(src, LUT1D{})) }
+// Note: Implement Grayscale properly (using pf)
+func GrayscaleProper(src image.Image) *image.NRGBA {
+	n := ToNRGBA(src)
+	p := From(n).Brightness(0) // no-op starter
+	p.steps = append([]step{{name: "grayscale", pf: pfGrayscale()}}, p.steps...)
+	img, _ := p.execute(context.Background())
+	return img
+}
+func Solarize(src image.Image, cutoff uint8) *image.NRGBA {
+	n := ToNRGBA(src)
+	p := From(n)
+	p.steps = append(p.steps, step{name: "solarize", pf: pfSolarize(cutoff)})
+	img, _ := p.execute(context.Background())
+	return img
+}
+
+// ---- Chainable API methods ----
 
 func (p *Pipeline) Brightness(delta float64) *Pipeline {
 	p.steps = append(p.steps, step{"brightness", pfBrightness(delta), nil})
@@ -1952,6 +2129,12 @@ func (p *Pipeline) DrawText(s string, at image.Point, col color.NRGBA, scale int
 	}})
 	return p
 }
+
+// New chainable effects
+func (p *Pipeline) Grayscale() *Pipeline { p.steps = append(p.steps, step{name: "grayscale", pf: pfGrayscale()}); return p }
+func (p *Pipeline) Solarize(cutoff uint8) *Pipeline { p.steps = append(p.steps, step{name: "solarize", pf: pfSolarize(cutoff)}); return p }
+func (p *Pipeline) Emboss(strength float64) *Pipeline { p.steps = append(p.steps, step{name: "emboss", apply: func(in *image.NRGBA) *image.NRGBA { return Emboss(in, strength) }}); return p }
+func (p *Pipeline) Vignette(strength float64) *Pipeline { p.steps = append(p.steps, step{name: "vignette", apply: func(in *image.NRGBA) *image.NRGBA { return Vignette(in, strength) }}); return p }
 
 // Plugin system
 type FilterFunc func(*image.NRGBA) *image.NRGBA

@@ -87,6 +87,29 @@ func main() {
 			}
 		case "invert":
 			p = p.Invert()
+		case "grayscale":
+			p = p.Grayscale()
+		case "solarize":
+			if len(args) >= 1 {
+				cut, _ := strconv.Atoi(args[0])
+				p = p.Solarize(uint8(cut))
+			} else {
+				p = p.Solarize(128)
+			}
+		case "emboss":
+			if len(args) >= 1 {
+				st, _ := strconv.ParseFloat(args[0], 64)
+				p = p.Emboss(st)
+			} else {
+				p = p.Emboss(0.5)
+			}
+		case "vignette":
+			if len(args) >= 1 {
+				st, _ := strconv.ParseFloat(args[0], 64)
+				p = p.Vignette(st)
+			} else {
+				p = p.Vignette(0.5)
+			}
 		case "gamma":
 			if len(args) >= 1 {
 				g, _ := strconv.ParseFloat(args[0], 64)
