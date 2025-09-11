@@ -1,4 +1,5 @@
-# vango — single-file, std-lib image toolkit
+# vango
+## a collection of various image manipulation effects named after Vincent van Gogh
 
 A compact, dependency-free image processing toolkit implemented as one Go source file (`vango.go`).
 It provides many common image operations, a fluent Pipeline API (with fusion of per-pixel ops),
