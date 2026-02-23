@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -30,6 +31,65 @@ func parseIntArg(s string, fallback int) int {
 		return fallback
 	}
 	return v
+}
+
+func autoBrightnessDelta(img image.Image) float64 {
+	n := vango.ToNRGBA(img)
+	var sum float64
+	var cnt int
+	for i := 0; i+3 < len(n.Pix); i += 4 {
+		if n.Pix[i+3] == 0 {
+			continue
+		}
+		l := (0.2126*float64(n.Pix[i+0]) + 0.7152*float64(n.Pix[i+1]) + 0.0722*float64(n.Pix[i+2])) / 255.0
+		sum += l
+		cnt++
+	}
+	if cnt == 0 {
+		return 0
+	}
+	delta := 0.5 - (sum / float64(cnt))
+	if delta > 0.3 {
+		return 0.3
+	}
+	if delta < -0.3 {
+		return -0.3
+	}
+	return delta
+}
+
+func autoVibranceFactor(img image.Image) float64 {
+	n := vango.ToNRGBA(img)
+	var satSum float64
+	var cnt int
+	for i := 0; i+3 < len(n.Pix); i += 4 {
+		if n.Pix[i+3] == 0 {
+			continue
+		}
+		rf := float64(n.Pix[i+0]) / 255.0
+		gf := float64(n.Pix[i+1]) / 255.0
+		bf := float64(n.Pix[i+2]) / 255.0
+		mx := math.Max(rf, math.Max(gf, bf))
+		mn := math.Min(rf, math.Min(gf, bf))
+		s := 0.0
+		if mx > 0 {
+			s = (mx - mn) / mx
+		}
+		satSum += s
+		cnt++
+	}
+	if cnt == 0 {
+		return 1
+	}
+	avgSat := satSum / float64(cnt)
+	if avgSat >= 0.55 {
+		return 1
+	}
+	factor := 1 + (0.55-avgSat)*1.2
+	if factor > 1.8 {
+		return 1.8
+	}
+	return factor
 }
 
 func applyCommand(p *vango.Pipeline, raw string) *vango.Pipeline {
@@ -149,11 +209,22 @@ func applyCommand(p *vango.Pipeline, raw string) *vango.Pipeline {
 			p = p.DrawText(args[0], image.Pt(parseIntArg(args[1], 0), parseIntArg(args[2], 0)), color.NRGBA{0, 0, 0, 255}, 2)
 		}
 	case "whitebalance", "wb":
-		rect := image.Rect(0, 0, 50, 50)
+		rect := image.Rectangle{}
 		if len(args) >= 4 {
 			rect = image.Rect(parseIntArg(args[0], 0), parseIntArg(args[1], 0), parseIntArg(args[2], 50), parseIntArg(args[3], 50))
 		}
 		p = p.WhiteBalance(rect)
+	case "autocontrast", "auto_contrast":
+		p = p.Equalize()
+	case "autobrightness", "auto_brightness":
+		p = p.Brightness(autoBrightnessDelta(p.Image()))
+	case "autovibrance", "auto_vibrance":
+		p = p.Saturation(autoVibranceFactor(p.Image()))
+	case "autocolor", "auto_color":
+		p = p.WhiteBalance(image.Rectangle{})
+		p = p.Equalize()
+		p = p.Brightness(autoBrightnessDelta(p.Image()))
+		p = p.Saturation(autoVibranceFactor(p.Image()))
 	case "apply":
 		if len(args) >= 1 {
 			p = p.Apply(args[0])

@@ -25,6 +25,9 @@ go build -o vango-cli ./cmd
 
 # additional effects
 ./vango-cli -in demo.jpg -out demo.gray_vig.jpg -cmds "grayscale, vignette 0.6, skew 0.08 0.0, resize_nearest 1200 800"
+
+# auto modes + improved whitebalance defaults
+./vango-cli -in demo.jpg -out demo.auto.jpg -cmds "whitebalance auto; auto_contrast; auto_brightness; auto_vibrance; auto_color"
 ```
 
 ## Generate demo outputs
@@ -64,6 +67,10 @@ go test -run TestGenerateDemos -v
 - vignette
 - whitebalance
 - wb (alias for whitebalance)
+- auto_contrast
+- auto_color
+- auto_brightness
+- auto_vibrance
 - apply (registered plugin filter)
 - LUT3D (ApplyLUT3D via Pipeline.Apply / LUT helpers)
 
