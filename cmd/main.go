@@ -211,7 +211,6 @@ func applyCommand(p *vango.Pipeline, raw string) *vango.Pipeline {
 	case "whitebalance", "wb":
 		rect := emptyRect()
 		if len(args) >= 1 && strings.EqualFold(args[0], "auto") {
-			rect = emptyRect()
 		} else if len(args) >= 4 {
 			rect = image.Rect(parseIntArg(args[0], 0), parseIntArg(args[1], 0), parseIntArg(args[2], 50), parseIntArg(args[3], 50))
 		}
