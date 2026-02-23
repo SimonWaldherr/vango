@@ -41,6 +41,19 @@ go build -o vango-cli ./cmd
 go test -run TestGenerateDemos -v
 ```
 
+## Browser/WASM preparation
+- A minimal browser-facing WASM entrypoint is available in `cmd/wasm`.
+- Build it with:
+
+```bash
+GOOS=js GOARCH=wasm go build -o vango.wasm ./cmd/wasm
+```
+
+- In the browser, load `wasm_exec.js` + `vango.wasm`; the module exposes a global `vango` object with:
+  - `vango.ready` (boolean)
+  - `vango.version` (string)
+  - `vango.effects` (array of supported CLI effect names)
+
 ## Supported effects (available via Pipeline and CLI)
 - blur (GaussianBlur)
 - unsharp (UnsharpMask)
