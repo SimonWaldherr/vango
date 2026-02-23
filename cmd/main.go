@@ -151,7 +151,7 @@ func applyCommand(p *vango.Pipeline, raw string) *vango.Pipeline {
 	case "whitebalance", "wb":
 		rect := image.Rect(0, 0, 50, 50)
 		if len(args) >= 4 {
-			rect = image.Rect(parseIntArg(args[0], rect.Min.X), parseIntArg(args[1], rect.Min.Y), parseIntArg(args[2], rect.Max.X), parseIntArg(args[3], rect.Max.Y))
+			rect = image.Rect(parseIntArg(args[0], 0), parseIntArg(args[1], 0), parseIntArg(args[2], 50), parseIntArg(args[3], 50))
 		}
 		p = p.WhiteBalance(rect)
 	case "apply":

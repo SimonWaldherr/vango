@@ -14,6 +14,14 @@ func TestSplitCommandsSupportsMultipleSeparators(t *testing.T) {
 	}
 }
 
+func TestApplyCommandResizeNearestHasExpectedSize(t *testing.T) {
+	img := image.NewNRGBA(image.Rect(0, 0, 20, 10))
+	out := applyCommand(vango.From(img), "resize_nearest 8 6").Image()
+	if got := out.Bounds().Size(); got.X != 8 || got.Y != 6 {
+		t.Fatalf("unexpected output size after resize_nearest: %v", got)
+	}
+}
+
 func TestApplyCommandAdditionalEffects(t *testing.T) {
 	img := image.NewNRGBA(image.Rect(0, 0, 20, 10))
 	p := vango.From(img)
@@ -28,7 +36,7 @@ func TestApplyCommandAdditionalEffects(t *testing.T) {
 	}
 
 	out := p.Image()
-	if got := out.Bounds().Size(); got.X < 8 || got.Y != 6 {
-		t.Fatalf("unexpected output size after additional effects pipeline: %v", got)
+	if got := out.Bounds().Size(); got.X == 0 || got.Y == 0 {
+		t.Fatalf("unexpected empty output size after additional effects pipeline: %v", got)
 	}
 }
