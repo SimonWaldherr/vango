@@ -15,6 +15,7 @@ func registerVangoAPI() {
 	api.Set("ready", js.ValueOf(true))
 	api.Set("version", js.ValueOf(wasmVersion))
 	names := vango.EffectNames()
+	// js.ValueOf requires []any for JS arrays; []string is not accepted directly.
 	effects := make([]any, len(names))
 	for i, e := range names {
 		effects[i] = e

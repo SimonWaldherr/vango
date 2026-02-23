@@ -10,4 +10,3 @@ func EffectNames() []string {
 		"auto_color", "auto_brightness", "auto_vibrance", "edge", "watermark", "apply",
 	}
 }
-
