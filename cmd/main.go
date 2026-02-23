@@ -13,7 +13,7 @@ import (
 	"github.com/SimonWaldherr/vango"
 )
 
-func fullImageRect() image.Rectangle { return image.Rectangle{} }
+func emptyRect() image.Rectangle { return image.Rectangle{} }
 
 func splitCommands(s string) []string {
 	return strings.FieldsFunc(s, func(r rune) bool { return r == ';' || r == ',' || r == '\n' })
@@ -209,8 +209,10 @@ func applyCommand(p *vango.Pipeline, raw string) *vango.Pipeline {
 			p = p.DrawText(args[0], image.Pt(parseIntArg(args[1], 0), parseIntArg(args[2], 0)), color.NRGBA{0, 0, 0, 255}, 2)
 		}
 	case "whitebalance", "wb":
-		rect := fullImageRect()
-		if len(args) >= 4 {
+		rect := emptyRect()
+		if len(args) >= 1 && strings.EqualFold(args[0], "auto") {
+			rect = emptyRect()
+		} else if len(args) >= 4 {
 			rect = image.Rect(parseIntArg(args[0], 0), parseIntArg(args[1], 0), parseIntArg(args[2], 50), parseIntArg(args[3], 50))
 		}
 		p = p.WhiteBalance(rect)
@@ -223,7 +225,7 @@ func applyCommand(p *vango.Pipeline, raw string) *vango.Pipeline {
 		n := vango.ToNRGBA(p.Image())
 		p = vango.From(n).Saturation(autoVibranceFactor(n))
 	case "autocolor", "auto_color":
-		p = p.WhiteBalance(fullImageRect())
+		p = p.WhiteBalance(emptyRect())
 		p = p.Equalize()
 		n := vango.ToNRGBA(p.Image())
 		p = vango.From(n).Brightness(autoBrightnessDelta(n))
