@@ -14,9 +14,10 @@ func registerVangoAPI() {
 	api := js.Global().Get("Object").New()
 	api.Set("ready", js.ValueOf(true))
 	api.Set("version", js.ValueOf(wasmVersion))
-	effects := make([]any, 0, len(vango.EffectNames()))
-	for _, e := range vango.EffectNames() {
-		effects = append(effects, e)
+	names := vango.EffectNames()
+	effects := make([]any, len(names))
+	for i, e := range names {
+		effects[i] = e
 	}
 	api.Set("effects", js.ValueOf(effects))
 	js.Global().Set("vango", api)
