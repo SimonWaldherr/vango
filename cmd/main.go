@@ -13,7 +13,7 @@ import (
 	"github.com/SimonWaldherr/vango"
 )
 
-var fullImageRect image.Rectangle
+func fullImageRect() image.Rectangle { return image.Rectangle{} }
 
 func splitCommands(s string) []string {
 	return strings.FieldsFunc(s, func(r rune) bool { return r == ';' || r == ',' || r == '\n' })
@@ -35,8 +35,7 @@ func parseIntArg(s string, fallback int) int {
 	return v
 }
 
-func autoBrightnessDelta(img image.Image) float64 {
-	n := vango.ToNRGBA(img)
+func autoBrightnessDelta(n *image.NRGBA) float64 {
 	var sum float64
 	var cnt int
 	for i := 0; i+3 < len(n.Pix); i += 4 {
@@ -60,8 +59,7 @@ func autoBrightnessDelta(img image.Image) float64 {
 	return delta
 }
 
-func autoVibranceFactor(img image.Image) float64 {
-	n := vango.ToNRGBA(img)
+func autoVibranceFactor(n *image.NRGBA) float64 {
 	var satSum float64
 	var cnt int
 	for i := 0; i+3 < len(n.Pix); i += 4 {
@@ -211,7 +209,7 @@ func applyCommand(p *vango.Pipeline, raw string) *vango.Pipeline {
 			p = p.DrawText(args[0], image.Pt(parseIntArg(args[1], 0), parseIntArg(args[2], 0)), color.NRGBA{0, 0, 0, 255}, 2)
 		}
 	case "whitebalance", "wb":
-		rect := fullImageRect
+		rect := fullImageRect()
 		if len(args) >= 4 {
 			rect = image.Rect(parseIntArg(args[0], 0), parseIntArg(args[1], 0), parseIntArg(args[2], 50), parseIntArg(args[3], 50))
 		}
@@ -219,14 +217,18 @@ func applyCommand(p *vango.Pipeline, raw string) *vango.Pipeline {
 	case "autocontrast", "auto_contrast":
 		p = p.Equalize()
 	case "autobrightness", "auto_brightness":
-		p = p.Brightness(autoBrightnessDelta(p.Image()))
+		n := vango.ToNRGBA(p.Image())
+		p = vango.From(n).Brightness(autoBrightnessDelta(n))
 	case "autovibrance", "auto_vibrance":
-		p = p.Saturation(autoVibranceFactor(p.Image()))
+		n := vango.ToNRGBA(p.Image())
+		p = vango.From(n).Saturation(autoVibranceFactor(n))
 	case "autocolor", "auto_color":
-		p = p.WhiteBalance(fullImageRect)
+		p = p.WhiteBalance(fullImageRect())
 		p = p.Equalize()
-		p = p.Brightness(autoBrightnessDelta(p.Image()))
-		p = p.Saturation(autoVibranceFactor(p.Image()))
+		n := vango.ToNRGBA(p.Image())
+		p = vango.From(n).Brightness(autoBrightnessDelta(n))
+		n = vango.ToNRGBA(p.Image())
+		p = vango.From(n).Saturation(autoVibranceFactor(n))
 	case "apply":
 		if len(args) >= 1 {
 			p = p.Apply(args[0])
