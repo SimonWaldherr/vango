@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"image"
 	"image/color"
+	"image/png"
+	"os"
 	"testing"
 
 	"github.com/SimonWaldherr/vango"
@@ -81,5 +83,47 @@ func TestApplyCommandAutoModes(t *testing.T) {
 	out := p.Image()
 	if got := out.Bounds().Size(); got.X != 12 || got.Y != 8 {
 		t.Fatalf("auto modes must preserve image size: %v", got)
+	}
+}
+
+func TestApplyCommandEdgeAndSmartCrop(t *testing.T) {
+	img := image.NewNRGBA(image.Rect(0, 0, 20, 10))
+	for y := 0; y < 10; y++ {
+		for x := 0; x < 20; x++ {
+			img.Set(x, y, color.NRGBA{R: uint8(20 + x), G: uint8(30 + y), B: uint8(40 + x + y), A: 255})
+		}
+	}
+	p := vango.From(img)
+	p = applyCommand(p, "edge")
+	p = applyCommand(p, "smartcrop 6 6")
+	out := p.Image()
+	if got := out.Bounds().Size(); got.X != 6 || got.Y != 6 {
+		t.Fatalf("edge+smartcrop should produce requested size: %v", got)
+	}
+}
+
+func TestApplyCommandWatermark(t *testing.T) {
+	img := image.NewNRGBA(image.Rect(0, 0, 30, 20))
+	mark := image.NewNRGBA(image.Rect(0, 0, 4, 4))
+	for y := 0; y < 4; y++ {
+		for x := 0; x < 4; x++ {
+			mark.Set(x, y, color.NRGBA{R: 255, A: 255})
+		}
+	}
+
+	tmp, err := os.CreateTemp(t.TempDir(), "mark-*.png")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := png.Encode(tmp, mark); err != nil {
+		t.Fatal(err)
+	}
+	if err := tmp.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	out := applyCommand(vango.From(img), "watermark "+tmp.Name()+" 2 2 0.7").Image()
+	if got := out.Bounds().Size(); got.X != 30 || got.Y != 20 {
+		t.Fatalf("watermark should preserve output size: %v", got)
 	}
 }

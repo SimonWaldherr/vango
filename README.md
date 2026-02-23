@@ -28,6 +28,9 @@ go build -o vango-cli ./cmd
 
 # auto modes (auto_color already includes whitebalance + auto contrast/brightness/vibrance)
 ./vango-cli -in demo.jpg -out demo.auto.jpg -cmds "auto_color"
+
+# edge detection + smart crop + watermark
+./vango-cli -in demo.jpg -out demo.edge.jpg -cmds "edge; smartcrop 1200 800; watermark logo.png 20 20 0.5"
 ```
 
 ## Generate demo outputs
@@ -53,6 +56,7 @@ go test -run TestGenerateDemos -v
 - resize
 - resize_nearest
 - crop
+- smartcrop
 - trim
 - pixelate
 - posterize
@@ -71,6 +75,8 @@ go test -run TestGenerateDemos -v
 - auto_color
 - auto_brightness
 - auto_vibrance
+- edge
+- watermark
 - apply (registered plugin filter)
 - LUT3D (ApplyLUT3D via Pipeline.Apply / LUT helpers)
 

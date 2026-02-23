@@ -36,6 +36,32 @@ func parseIntArg(s string, fallback int) int {
 	return v
 }
 
+func smartCropRect(b image.Rectangle, outW, outH int) image.Rectangle {
+	if outW <= 0 || outH <= 0 || b.Empty() {
+		return b
+	}
+	srcW := b.Dx()
+	srcH := b.Dy()
+	target := float64(outW) / float64(outH)
+	srcAspect := float64(srcW) / float64(srcH)
+
+	cropW, cropH := srcW, srcH
+	if srcAspect > target {
+		cropW = int(math.Round(float64(srcH) * target))
+	} else if srcAspect < target {
+		cropH = int(math.Round(float64(srcW) / target))
+	}
+	if cropW < 1 {
+		cropW = 1
+	}
+	if cropH < 1 {
+		cropH = 1
+	}
+	x0 := b.Min.X + (srcW-cropW)/2
+	y0 := b.Min.Y + (srcH-cropH)/2
+	return image.Rect(x0, y0, x0+cropW, y0+cropH)
+}
+
 // autoBrightnessDelta targets mid-gray average luma (0.5), clamped to +/-0.3.
 func autoBrightnessDelta(n *image.NRGBA) float64 {
 	var sum float64
@@ -183,6 +209,14 @@ func applyCommand(p *vango.Pipeline, raw string) *vango.Pipeline {
 			y1 := parseIntArg(args[3], 0)
 			p = p.Crop(image.Rect(x0, y0, x1, y1))
 		}
+	case "smartcrop", "smart_crop":
+		if len(args) >= 2 {
+			w := parseIntArg(args[0], 1)
+			h := parseIntArg(args[1], 1)
+			b := p.Image().Bounds()
+			rect := smartCropRect(b, w, h)
+			p = p.Crop(rect).ResizeBilinear(w, h)
+		}
 	case "trim":
 		p = p.Trim(color.NRGBA{255, 255, 255, 255}, 8)
 	case "pixelate":
@@ -232,6 +266,22 @@ func applyCommand(p *vango.Pipeline, raw string) *vango.Pipeline {
 		p = vango.From(n).Brightness(autoBrightnessDelta(n))
 		brightnessAdjusted := p.Image()
 		p = vango.From(brightnessAdjusted).Saturation(autoVibranceFactor(brightnessAdjusted))
+	case "edge", "edgedetect", "edge_detect":
+		p = vango.From(vango.SobelEdges(p.Image()))
+	case "watermark":
+		if len(args) >= 4 {
+			mf, err := os.Open(args[0])
+			if err == nil {
+				mark, _, derr := vango.Decode(mf)
+				_ = mf.Close()
+				if derr == nil {
+					x := parseIntArg(args[1], 0)
+					y := parseIntArg(args[2], 0)
+					opacity := parseFloatArg(args[3], 0.5)
+					p = p.Watermark(mark, image.Pt(x, y), opacity)
+				}
+			}
+		}
 	case "apply":
 		if len(args) >= 1 {
 			p = p.Apply(args[0])
