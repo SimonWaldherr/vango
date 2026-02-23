@@ -20,11 +20,11 @@ go build -o vango-cli ./cmd
 2. Use the CLI to process an image (zsh example):
 
 ```bash
-# basic CLI usage
+# basic CLI usage (use ; or , as separators)
 ./vango-cli -in demo.jpg -out demo.out.jpg -cmds "blur 1.2; contrast 1.1; sepia 0.2"
 
-# new effects
-./vango-cli -in demo.jpg -out demo.gray_vig.jpg -cmds "grayscale; vignette 0.6"
+# additional effects
+./vango-cli -in demo.jpg -out demo.gray_vig.jpg -cmds "grayscale, vignette 0.6, skew 0.08 0.0, resize_nearest 1200 800"
 ```
 
 ## Generate demo outputs
@@ -46,7 +46,9 @@ go test -run TestGenerateDemos -v
 - invert
 - gamma
 - rotate
+- skew
 - resize
+- resize_nearest
 - crop
 - trim
 - pixelate
@@ -61,6 +63,8 @@ go test -run TestGenerateDemos -v
 - emboss
 - vignette
 - whitebalance
+- wb (alias for whitebalance)
+- apply (registered plugin filter)
 - LUT3D (ApplyLUT3D via Pipeline.Apply / LUT helpers)
 
 ## Examples in code

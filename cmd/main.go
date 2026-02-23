@@ -12,6 +12,158 @@ import (
 	"github.com/SimonWaldherr/vango"
 )
 
+func splitCommands(s string) []string {
+	return strings.FieldsFunc(s, func(r rune) bool { return r == ';' || r == ',' || r == '\n' })
+}
+
+func parseFloatArg(s string, fallback float64) float64 {
+	v, err := strconv.ParseFloat(s, 64)
+	if err != nil {
+		return fallback
+	}
+	return v
+}
+
+func parseIntArg(s string, fallback int) int {
+	v, err := strconv.Atoi(s)
+	if err != nil {
+		return fallback
+	}
+	return v
+}
+
+func applyCommand(p *vango.Pipeline, raw string) *vango.Pipeline {
+	toks := strings.Fields(strings.TrimSpace(raw))
+	if len(toks) == 0 {
+		return p
+	}
+
+	name := strings.ToLower(toks[0])
+	args := toks[1:]
+
+	switch name {
+	case "blur":
+		if len(args) >= 1 {
+			p = p.GaussianBlur(parseFloatArg(args[0], 0), 0)
+		}
+	case "unsharp":
+		if len(args) >= 2 {
+			p = p.Unsharp(parseFloatArg(args[0], 0), parseFloatArg(args[1], 0), 0)
+		}
+	case "contrast":
+		if len(args) >= 1 {
+			p = p.Contrast(parseFloatArg(args[0], 1))
+		}
+	case "saturation":
+		if len(args) >= 1 {
+			p = p.Saturation(parseFloatArg(args[0], 1))
+		}
+	case "brightness":
+		if len(args) >= 1 {
+			p = p.Brightness(parseFloatArg(args[0], 0))
+		}
+	case "hue":
+		if len(args) >= 1 {
+			p = p.Hue(parseFloatArg(args[0], 0))
+		}
+	case "sepia":
+		if len(args) >= 1 {
+			p = p.Sepia(parseFloatArg(args[0], 0))
+		}
+	case "invert":
+		p = p.Invert()
+	case "grayscale":
+		p = p.Grayscale()
+	case "solarize":
+		if len(args) >= 1 {
+			p = p.Solarize(uint8(parseIntArg(args[0], 128)))
+		} else {
+			p = p.Solarize(128)
+		}
+	case "emboss":
+		if len(args) >= 1 {
+			p = p.Emboss(parseFloatArg(args[0], 0.5))
+		} else {
+			p = p.Emboss(0.5)
+		}
+	case "vignette":
+		if len(args) >= 1 {
+			p = p.Vignette(parseFloatArg(args[0], 0.5))
+		} else {
+			p = p.Vignette(0.5)
+		}
+	case "gamma":
+		if len(args) >= 1 {
+			p = p.Gamma(parseFloatArg(args[0], 1))
+		}
+	case "rotate":
+		if len(args) >= 1 {
+			p = p.Rotate(parseFloatArg(args[0], 0), "bilinear", color.NRGBA{255, 255, 255, 255})
+		}
+	case "skew":
+		if len(args) >= 2 {
+			p = p.Skew(parseFloatArg(args[0], 0), parseFloatArg(args[1], 0), "bilinear", color.NRGBA{255, 255, 255, 255})
+		}
+	case "resize":
+		if len(args) >= 2 {
+			p = p.ResizeBilinear(parseIntArg(args[0], 1), parseIntArg(args[1], 1))
+		}
+	case "resizenearest", "resize_nearest":
+		if len(args) >= 2 {
+			p = p.ResizeNearest(parseIntArg(args[0], 1), parseIntArg(args[1], 1))
+		}
+	case "crop":
+		if len(args) >= 4 {
+			x0 := parseIntArg(args[0], 0)
+			y0 := parseIntArg(args[1], 0)
+			x1 := parseIntArg(args[2], 0)
+			y1 := parseIntArg(args[3], 0)
+			p = p.Crop(image.Rect(x0, y0, x1, y1))
+		}
+	case "trim":
+		p = p.Trim(color.NRGBA{255, 255, 255, 255}, 8)
+	case "pixelate":
+		if len(args) >= 1 {
+			p = p.Pixelate(parseIntArg(args[0], 1))
+		}
+	case "posterize":
+		if len(args) >= 1 {
+			p = p.Posterize(parseIntArg(args[0], 2))
+		}
+	case "threshold":
+		if len(args) >= 1 {
+			p = p.Threshold(uint8(parseIntArg(args[0], 128)))
+		}
+	case "equalize":
+		p = p.Equalize()
+	case "tonemap":
+		if len(args) >= 1 {
+			p = p.Tonemap(parseFloatArg(args[0], 1))
+		}
+	case "dither":
+		if len(args) >= 1 {
+			p = p.Dither(parseIntArg(args[0], 4))
+		}
+	case "text":
+		if len(args) >= 3 {
+			p = p.DrawText(args[0], image.Pt(parseIntArg(args[1], 0), parseIntArg(args[2], 0)), color.NRGBA{0, 0, 0, 255}, 2)
+		}
+	case "whitebalance", "wb":
+		rect := image.Rect(0, 0, 50, 50)
+		if len(args) >= 4 {
+			rect = image.Rect(parseIntArg(args[0], rect.Min.X), parseIntArg(args[1], rect.Min.Y), parseIntArg(args[2], rect.Max.X), parseIntArg(args[3], rect.Max.Y))
+		}
+		p = p.WhiteBalance(rect)
+	case "apply":
+		if len(args) >= 1 {
+			p = p.Apply(args[0])
+		}
+	default:
+		fmt.Fprintln(os.Stderr, "unknown command:", name)
+	}
+	return p
+}
+
 func main() {
 	inPath := flag.String("in", "", "input image path (required)")
 	outPath := flag.String("out", "out.png", "output image path")
@@ -38,141 +190,9 @@ func main() {
 	p := vango.From(img)
 
 	// Parse commands
-	commands := strings.Split(*cmds, ";")
+	commands := splitCommands(*cmds)
 	for _, raw := range commands {
-		raw = strings.TrimSpace(raw)
-		if raw == "" {
-			continue
-		}
-		toks := strings.Fields(raw)
-		name := strings.ToLower(toks[0])
-		args := toks[1:]
-
-		switch name {
-		case "blur":
-			if len(args) >= 1 {
-				sigma, _ := strconv.ParseFloat(args[0], 64)
-				p = p.GaussianBlur(sigma, 0)
-			}
-		case "unsharp":
-			if len(args) >= 2 {
-				amount, _ := strconv.ParseFloat(args[0], 64)
-				sigma, _ := strconv.ParseFloat(args[1], 64)
-				p = p.Unsharp(amount, sigma, 0)
-			}
-		case "contrast":
-			if len(args) >= 1 {
-				fac, _ := strconv.ParseFloat(args[0], 64)
-				p = p.Contrast(fac)
-			}
-		case "saturation":
-			if len(args) >= 1 {
-				fac, _ := strconv.ParseFloat(args[0], 64)
-				p = p.Saturation(fac)
-			}
-		case "brightness":
-			if len(args) >= 1 {
-				delta, _ := strconv.ParseFloat(args[0], 64)
-				p = p.Brightness(delta)
-			}
-		case "hue":
-			if len(args) >= 1 {
-				deg, _ := strconv.ParseFloat(args[0], 64)
-				p = p.Hue(deg)
-			}
-		case "sepia":
-			if len(args) >= 1 {
-				amt, _ := strconv.ParseFloat(args[0], 64)
-				p = p.Sepia(amt)
-			}
-		case "invert":
-			p = p.Invert()
-		case "grayscale":
-			p = p.Grayscale()
-		case "solarize":
-			if len(args) >= 1 {
-				cut, _ := strconv.Atoi(args[0])
-				p = p.Solarize(uint8(cut))
-			} else {
-				p = p.Solarize(128)
-			}
-		case "emboss":
-			if len(args) >= 1 {
-				st, _ := strconv.ParseFloat(args[0], 64)
-				p = p.Emboss(st)
-			} else {
-				p = p.Emboss(0.5)
-			}
-		case "vignette":
-			if len(args) >= 1 {
-				st, _ := strconv.ParseFloat(args[0], 64)
-				p = p.Vignette(st)
-			} else {
-				p = p.Vignette(0.5)
-			}
-		case "gamma":
-			if len(args) >= 1 {
-				g, _ := strconv.ParseFloat(args[0], 64)
-				p = p.Gamma(g)
-			}
-		case "rotate":
-			if len(args) >= 1 {
-				deg, _ := strconv.ParseFloat(args[0], 64)
-				p = p.Rotate(deg, "bilinear", color.NRGBA{255, 255, 255, 255})
-			}
-		case "resize":
-			if len(args) >= 2 {
-				w, _ := strconv.Atoi(args[0])
-				h, _ := strconv.Atoi(args[1])
-				p = p.ResizeBilinear(w, h)
-			}
-		case "crop":
-			if len(args) >= 4 {
-				x0, _ := strconv.Atoi(args[0])
-				y0, _ := strconv.Atoi(args[1])
-				x1, _ := strconv.Atoi(args[2])
-				y1, _ := strconv.Atoi(args[3])
-				p = p.Crop(image.Rect(x0, y0, x1, y1))
-			}
-		case "trim":
-			p = p.Trim(color.NRGBA{255, 255, 255, 255}, 8)
-		case "pixelate":
-			if len(args) >= 1 {
-				b, _ := strconv.Atoi(args[0])
-				p = p.Pixelate(b)
-			}
-		case "posterize":
-			if len(args) >= 1 {
-				lv, _ := strconv.Atoi(args[0])
-				p = p.Posterize(lv)
-			}
-		case "threshold":
-			if len(args) >= 1 {
-				cut, _ := strconv.Atoi(args[0])
-				p = p.Threshold(uint8(cut))
-			}
-		case "equalize":
-			p = p.Equalize()
-		case "tonemap":
-			if len(args) >= 1 {
-				exp, _ := strconv.ParseFloat(args[0], 64)
-				p = p.Tonemap(exp)
-			}
-		case "dither":
-			if len(args) >= 1 {
-				lv, _ := strconv.Atoi(args[0])
-				p = p.Dither(lv)
-			}
-		case "text":
-			if len(args) >= 3 {
-				txt := args[0]
-				x, _ := strconv.Atoi(args[1])
-				y, _ := strconv.Atoi(args[2])
-				p = p.DrawText(txt, image.Pt(x, y), color.NRGBA{0, 0, 0, 255}, 2)
-			}
-		default:
-			fmt.Fprintln(os.Stderr, "unknown command:", name)
-		}
+		p = applyCommand(p, raw)
 	}
 
 	// Save output based on extension
