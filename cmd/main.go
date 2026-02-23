@@ -13,6 +13,7 @@ import (
 	"github.com/SimonWaldherr/vango"
 )
 
+// emptyRect returns a zero rectangle used by whitebalance to select full-image auto mode.
 func emptyRect() image.Rectangle { return image.Rectangle{} }
 
 func splitCommands(s string) []string {
@@ -35,6 +36,7 @@ func parseIntArg(s string, fallback int) int {
 	return v
 }
 
+// autoBrightnessDelta targets mid-gray average luma (0.5), clamped to +/-0.3.
 func autoBrightnessDelta(n *image.NRGBA) float64 {
 	var sum float64
 	var cnt int
@@ -59,6 +61,7 @@ func autoBrightnessDelta(n *image.NRGBA) float64 {
 	return delta
 }
 
+// autoVibranceFactor raises average saturation toward ~0.55, capped at 1.8x.
 func autoVibranceFactor(n *image.NRGBA) float64 {
 	var satSum float64
 	var cnt int

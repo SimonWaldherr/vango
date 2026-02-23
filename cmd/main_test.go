@@ -53,8 +53,12 @@ func TestApplyCommandWhiteBalanceAutoMatchesDefault(t *testing.T) {
 
 	a := applyCommand(vango.From(img), "whitebalance").Image()
 	b := applyCommand(vango.From(img), "whitebalance auto").Image()
+	c := applyCommand(vango.From(img), "whitebalance 0 0 4 4").Image()
 	if !bytes.Equal(a.Pix, b.Pix) {
 		t.Fatalf("whitebalance default and auto should match")
+	}
+	if !bytes.Equal(a.Pix, c.Pix) {
+		t.Fatalf("whitebalance rectangle mode should remain supported")
 	}
 }
 
