@@ -26,8 +26,8 @@ go build -o vango-cli ./cmd
 # additional effects
 ./vango-cli -in demo.jpg -out demo.gray_vig.jpg -cmds "grayscale, vignette 0.6, skew 0.08 0.0, resize_nearest 1200 800"
 
-# auto modes + improved whitebalance defaults
-./vango-cli -in demo.jpg -out demo.auto.jpg -cmds "whitebalance auto; auto_contrast; auto_brightness; auto_vibrance; auto_color"
+# auto modes (auto_color already includes whitebalance + auto contrast/brightness/vibrance)
+./vango-cli -in demo.jpg -out demo.auto.jpg -cmds "auto_color"
 ```
 
 ## Generate demo outputs

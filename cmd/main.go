@@ -13,6 +13,8 @@ import (
 	"github.com/SimonWaldherr/vango"
 )
 
+var fullImageRect image.Rectangle
+
 func splitCommands(s string) []string {
 	return strings.FieldsFunc(s, func(r rune) bool { return r == ';' || r == ',' || r == '\n' })
 }
@@ -209,7 +211,7 @@ func applyCommand(p *vango.Pipeline, raw string) *vango.Pipeline {
 			p = p.DrawText(args[0], image.Pt(parseIntArg(args[1], 0), parseIntArg(args[2], 0)), color.NRGBA{0, 0, 0, 255}, 2)
 		}
 	case "whitebalance", "wb":
-		rect := image.Rectangle{}
+		rect := fullImageRect
 		if len(args) >= 4 {
 			rect = image.Rect(parseIntArg(args[0], 0), parseIntArg(args[1], 0), parseIntArg(args[2], 50), parseIntArg(args[3], 50))
 		}
@@ -221,7 +223,7 @@ func applyCommand(p *vango.Pipeline, raw string) *vango.Pipeline {
 	case "autovibrance", "auto_vibrance":
 		p = p.Saturation(autoVibranceFactor(p.Image()))
 	case "autocolor", "auto_color":
-		p = p.WhiteBalance(image.Rectangle{})
+		p = p.WhiteBalance(fullImageRect)
 		p = p.Equalize()
 		p = p.Brightness(autoBrightnessDelta(p.Image()))
 		p = p.Saturation(autoVibranceFactor(p.Image()))
