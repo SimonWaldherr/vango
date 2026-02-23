@@ -213,8 +213,7 @@ func applyCommand(p *vango.Pipeline, raw string) *vango.Pipeline {
 		}
 	case "whitebalance", "wb":
 		rect := emptyRect()
-		if len(args) >= 1 && strings.EqualFold(args[0], "auto") {
-		} else if len(args) >= 4 {
+		if len(args) >= 4 {
 			rect = image.Rect(parseIntArg(args[0], 0), parseIntArg(args[1], 0), parseIntArg(args[2], 50), parseIntArg(args[3], 50))
 		}
 		p = p.WhiteBalance(rect)
@@ -231,8 +230,8 @@ func applyCommand(p *vango.Pipeline, raw string) *vango.Pipeline {
 		p = p.Equalize()
 		n := vango.ToNRGBA(p.Image())
 		p = vango.From(n).Brightness(autoBrightnessDelta(n))
-		n = p.Image()
-		p = vango.From(n).Saturation(autoVibranceFactor(n))
+		n2 := p.Image()
+		p = vango.From(n2).Saturation(autoVibranceFactor(n2))
 	case "apply":
 		if len(args) >= 1 {
 			p = p.Apply(args[0])
