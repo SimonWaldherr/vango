@@ -590,6 +590,9 @@ func WhiteBalanceByRect(src image.Image, ref image.Rectangle) *image.NRGBA {
 	avgR := float64(rs) / float64(cnt)
 	avgG := float64(gs) / float64(cnt)
 	avgB := float64(bs) / float64(cnt)
+	if avgR <= 0 || avgG <= 0 || avgB <= 0 {
+		return CloneNRGBA(n)
+	}
 	target := (avgR + avgG + avgB) / 3
 	gainR := target / avgR
 	gainG := target / avgG
