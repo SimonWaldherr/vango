@@ -7,6 +7,7 @@ import (
 	"image/color"
 	"math"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -270,10 +271,15 @@ func applyCommand(p *vango.Pipeline, raw string) *vango.Pipeline {
 		p = vango.From(vango.SobelEdges(p.Image()))
 	case "watermark":
 		if len(args) >= 4 {
-			mf, err := os.Open(args[0])
+			markPath := filepath.Clean(args[0])
+			mf, err := os.Open(markPath)
 			if err == nil {
+				defer func() {
+					if cerr := mf.Close(); cerr != nil {
+						fmt.Fprintln(os.Stderr, "warning: closing watermark file:", cerr)
+					}
+				}()
 				mark, _, derr := vango.Decode(mf)
-				_ = mf.Close()
 				if derr == nil {
 					x := parseIntArg(args[1], 0)
 					y := parseIntArg(args[2], 0)
