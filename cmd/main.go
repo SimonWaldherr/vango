@@ -227,7 +227,7 @@ func applyCommand(p *vango.Pipeline, raw string) *vango.Pipeline {
 		p = p.Equalize()
 		n := vango.ToNRGBA(p.Image())
 		p = vango.From(n).Brightness(autoBrightnessDelta(n))
-		n = vango.ToNRGBA(p.Image())
+		n = p.Image()
 		p = vango.From(n).Saturation(autoVibranceFactor(n))
 	case "apply":
 		if len(args) >= 1 {
