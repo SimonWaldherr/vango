@@ -271,6 +271,10 @@ func applyCommand(p *vango.Pipeline, raw string) *vango.Pipeline {
 		p = vango.From(vango.SobelEdges(p.Image()))
 	case "watermark":
 		if len(args) >= 4 {
+			if strings.Contains(args[0], "..") {
+				fmt.Fprintln(os.Stderr, "warning: watermark path must not contain '..'")
+				break
+			}
 			markPath := filepath.Clean(args[0])
 			mf, err := os.Open(markPath)
 			if err == nil {
@@ -285,7 +289,11 @@ func applyCommand(p *vango.Pipeline, raw string) *vango.Pipeline {
 					y := parseIntArg(args[2], 0)
 					opacity := parseFloatArg(args[3], 0.5)
 					p = p.Watermark(mark, image.Pt(x, y), opacity)
+				} else {
+					fmt.Fprintf(os.Stderr, "warning: decode watermark image %s: %v\n", markPath, derr)
 				}
+			} else {
+				fmt.Fprintf(os.Stderr, "warning: open watermark image %s: %v\n", markPath, err)
 			}
 		}
 	case "apply":
