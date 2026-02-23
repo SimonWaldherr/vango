@@ -56,6 +56,7 @@ GOOS=js GOARCH=wasm go build -ldflags "-X main.wasmVersion=v0.1.0" -o vango.wasm
 ```
 
 - In the browser, load `wasm_exec.js` + `vango.wasm`; the module exposes a global `vango` object with:
+  - `wasm_exec.js` is available in your Go installation at `$(go env GOROOT)/lib/wasm/wasm_exec.js`.
   - `vango.ready` (boolean)
   - `vango.version` (string)
   - `vango.effects` (array of supported CLI effect names)
