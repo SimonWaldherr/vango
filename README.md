@@ -49,6 +49,12 @@ go test -run TestGenerateDemos -v
 GOOS=js GOARCH=wasm go build -o vango.wasm ./cmd/wasm
 ```
 
+- Optional version injection:
+
+```bash
+GOOS=js GOARCH=wasm go build -ldflags "-X main.wasmVersion=v0.1.0" -o vango.wasm ./cmd/wasm
+```
+
 - In the browser, load `wasm_exec.js` + `vango.wasm`; the module exposes a global `vango` object with:
   - `vango.ready` (boolean)
   - `vango.version` (string)
