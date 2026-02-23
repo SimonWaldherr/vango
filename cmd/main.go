@@ -276,7 +276,7 @@ func applyCommand(p *vango.Pipeline, raw string) *vango.Pipeline {
 			if err == nil {
 				defer func() {
 					if cerr := mf.Close(); cerr != nil {
-						fmt.Fprintln(os.Stderr, "warning: closing watermark file:", cerr)
+						fmt.Fprintf(os.Stderr, "warning: closing watermark file %s: %v\n", markPath, cerr)
 					}
 				}()
 				mark, _, derr := vango.Decode(mf)
