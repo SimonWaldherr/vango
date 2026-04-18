@@ -7,6 +7,7 @@ func EffectNames() []string {
 		"gamma", "rotate", "skew", "resize", "resize_nearest", "crop", "smartcrop", "trim",
 		"pixelate", "posterize", "threshold", "equalize", "tonemap", "dither", "text",
 		"grayscale", "solarize", "emboss", "vignette", "whitebalance", "wb", "auto_contrast",
-		"auto_color", "auto_brightness", "auto_vibrance", "edge", "watermark", "apply",
+		"auto_color", "auto_brightness", "auto_vibrance", "auto_full", "noise_reduction", "denoise",
+		"edge", "watermark", "collage", "apply",
 	}
 }

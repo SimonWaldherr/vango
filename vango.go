@@ -613,6 +613,62 @@ func WhiteBalanceByRect(src image.Image, ref image.Rectangle) *image.NRGBA {
 }
 
 //
+// ------------------------------ Noise reduction -----------------------------
+//
+
+// NoiseReduction applies a median filter with a square kernel of size (2*radius+1).
+// radius=1 gives a 3×3 window; radius=2 gives 5×5, etc.
+func NoiseReduction(src image.Image, radius int) *image.NRGBA {
+	if radius < 1 {
+		radius = 1
+	}
+	n := ToNRGBA(src)
+	r := n.Rect
+	out := image.NewNRGBA(r)
+	windowSize := (2*radius + 1) * (2*radius + 1)
+	_ = parallelRows(context.Background(), r.Dy(), func(yy int) {
+		y := r.Min.Y + yy
+		bufR := make([]uint8, windowSize)
+		bufG := make([]uint8, windowSize)
+		bufB := make([]uint8, windowSize)
+		for x := r.Min.X; x < r.Max.X; x++ {
+			k := 0
+			for j := -radius; j <= radius; j++ {
+				yy2 := y + j
+				if yy2 < r.Min.Y {
+					yy2 = r.Min.Y
+				} else if yy2 >= r.Max.Y {
+					yy2 = r.Max.Y - 1
+				}
+				for ii := -radius; ii <= radius; ii++ {
+					xx := x + ii
+					if xx < r.Min.X {
+						xx = r.Min.X
+					} else if xx >= r.Max.X {
+						xx = r.Max.X - 1
+					}
+					p := idx(n, xx, yy2)
+					bufR[k] = n.Pix[p+0]
+					bufG[k] = n.Pix[p+1]
+					bufB[k] = n.Pix[p+2]
+					k++
+				}
+			}
+			sort.Slice(bufR[:k], func(a, b int) bool { return bufR[a] < bufR[b] })
+			sort.Slice(bufG[:k], func(a, b int) bool { return bufG[a] < bufG[b] })
+			sort.Slice(bufB[:k], func(a, b int) bool { return bufB[a] < bufB[b] })
+			mid := k / 2
+			q := idx(out, x, y)
+			out.Pix[q+0] = bufR[mid]
+			out.Pix[q+1] = bufG[mid]
+			out.Pix[q+2] = bufB[mid]
+			out.Pix[q+3] = n.Pix[idx(n, x, y)+3]
+		}
+	})
+	return out
+}
+
+//
 // ------------------------------ Geometry ------------------------------------
 //
 
@@ -914,6 +970,110 @@ func TrimByColor(src image.Image, col color.NRGBA, tol uint8) *image.NRGBA {
 		return image.NewNRGBA(image.Rect(0, 0, 0, 0))
 	}
 	return Crop(n, image.Rect(minX, minY, maxX, maxY))
+}
+
+//
+// ------------------------------ Image alignment / collage -------------------
+//
+
+// AlignImages tiles images side by side (horizontal) or stacked (vertical).
+// direction: "horizontal"/"h" (or "left"/"right") – images in a row matched by height.
+// direction: "vertical"/"v" (or "top"/"bottom") – images in a column matched by width.
+// All images are scaled to share the same height (horizontal) or same width (vertical).
+// bg fills the canvas background.
+func AlignImages(imgs []image.Image, direction string, bg color.NRGBA) *image.NRGBA {
+	if len(imgs) == 0 {
+		return image.NewNRGBA(image.Rect(0, 0, 0, 0))
+	}
+	dir := strings.ToLower(direction)
+	isHoriz := dir == "" || dir == "h" || dir == "horizontal" || dir == "left" || dir == "right"
+
+	if isHoriz {
+		maxH := 0
+		for _, im := range imgs {
+			if im.Bounds().Dy() > maxH {
+				maxH = im.Bounds().Dy()
+			}
+		}
+		if maxH == 0 {
+			return image.NewNRGBA(image.Rect(0, 0, 0, 0))
+		}
+		nrgbas := make([]*image.NRGBA, len(imgs))
+		totalW := 0
+		for i, im := range imgs {
+			h := im.Bounds().Dy()
+			w := im.Bounds().Dx()
+			if h == 0 || w == 0 {
+				nrgbas[i] = image.NewNRGBA(image.Rect(0, 0, 0, maxH))
+				continue
+			}
+			newW := int(math.Round(float64(w) * float64(maxH) / float64(h)))
+			if newW < 1 {
+				newW = 1
+			}
+			nrgbas[i] = ResizeBilinear(im, newW, maxH)
+			totalW += newW
+		}
+		out := image.NewNRGBA(image.Rect(0, 0, totalW, maxH))
+		for j := 0; j < len(out.Pix); j += 4 {
+			out.Pix[j+0] = bg.R
+			out.Pix[j+1] = bg.G
+			out.Pix[j+2] = bg.B
+			out.Pix[j+3] = bg.A
+		}
+		xOff := 0
+		for _, nn := range nrgbas {
+			if nn.Rect.Dx() == 0 {
+				continue
+			}
+			draw.Draw(out, image.Rect(xOff, 0, xOff+nn.Rect.Dx(), maxH), nn, nn.Rect.Min, draw.Over)
+			xOff += nn.Rect.Dx()
+		}
+		return out
+	}
+
+	// Vertical: scale to same width
+	maxW := 0
+	for _, im := range imgs {
+		if im.Bounds().Dx() > maxW {
+			maxW = im.Bounds().Dx()
+		}
+	}
+	if maxW == 0 {
+		return image.NewNRGBA(image.Rect(0, 0, 0, 0))
+	}
+	nrgbas := make([]*image.NRGBA, len(imgs))
+	totalH := 0
+	for i, im := range imgs {
+		w := im.Bounds().Dx()
+		h := im.Bounds().Dy()
+		if w == 0 || h == 0 {
+			nrgbas[i] = image.NewNRGBA(image.Rect(0, 0, maxW, 0))
+			continue
+		}
+		newH := int(math.Round(float64(h) * float64(maxW) / float64(w)))
+		if newH < 1 {
+			newH = 1
+		}
+		nrgbas[i] = ResizeBilinear(im, maxW, newH)
+		totalH += newH
+	}
+	out := image.NewNRGBA(image.Rect(0, 0, maxW, totalH))
+	for j := 0; j < len(out.Pix); j += 4 {
+		out.Pix[j+0] = bg.R
+		out.Pix[j+1] = bg.G
+		out.Pix[j+2] = bg.B
+		out.Pix[j+3] = bg.A
+	}
+	yOff := 0
+	for _, nn := range nrgbas {
+		if nn.Rect.Dy() == 0 {
+			continue
+		}
+		draw.Draw(out, image.Rect(0, yOff, maxW, yOff+nn.Rect.Dy()), nn, nn.Rect.Min, draw.Over)
+		yOff += nn.Rect.Dy()
+	}
+	return out
 }
 
 //
@@ -2138,6 +2298,19 @@ func (p *Pipeline) Grayscale() *Pipeline { p.steps = append(p.steps, step{name: 
 func (p *Pipeline) Solarize(cutoff uint8) *Pipeline { p.steps = append(p.steps, step{name: "solarize", pf: pfSolarize(cutoff)}); return p }
 func (p *Pipeline) Emboss(strength float64) *Pipeline { p.steps = append(p.steps, step{name: "emboss", apply: func(in *image.NRGBA) *image.NRGBA { return Emboss(in, strength) }}); return p }
 func (p *Pipeline) Vignette(strength float64) *Pipeline { p.steps = append(p.steps, step{name: "vignette", apply: func(in *image.NRGBA) *image.NRGBA { return Vignette(in, strength) }}); return p }
+func (p *Pipeline) NoiseReduction(radius int) *Pipeline {
+	p.steps = append(p.steps, step{name: "noiseReduction", apply: func(in *image.NRGBA) *image.NRGBA { return NoiseReduction(in, radius) }})
+	return p
+}
+
+// Collage places the current pipeline image and other side by side or stacked.
+// direction: "horizontal"/"h" (default) or "vertical"/"v". bg fills any gap.
+func (p *Pipeline) Collage(other image.Image, direction string, bg color.NRGBA) *Pipeline {
+	p.steps = append(p.steps, step{name: "collage", apply: func(in *image.NRGBA) *image.NRGBA {
+		return AlignImages([]image.Image{in, other}, direction, bg)
+	}})
+	return p
+}
 
 // Plugin system
 type FilterFunc func(*image.NRGBA) *image.NRGBA

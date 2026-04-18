@@ -29,6 +29,16 @@ go build -o vango-cli ./cmd
 # auto modes (auto_color already includes whitebalance + auto contrast/brightness/vibrance)
 ./vango-cli -in demo.jpg -out demo.auto.jpg -cmds "auto_color"
 
+# full auto enhance (whitebalance + noise reduction + auto contrast/brightness/vibrance)
+./vango-cli -in demo.jpg -out demo.auto_full.jpg -cmds "auto_full"
+
+# noise reduction (median filter, radius=1 gives 3×3 window, radius=2 gives 5×5, etc.)
+./vango-cli -in demo.jpg -out demo.denoised.jpg -cmds "noise_reduction 1"
+
+# align/collage two images side by side (horizontal or vertical)
+./vango-cli -in demo.jpg -out demo.collage.jpg -cmds "collage other.jpg horizontal"
+./vango-cli -in demo.jpg -out demo.collage_v.jpg -cmds "collage other.jpg vertical"
+
 # edge detection + smart crop + watermark
 ./vango-cli -in demo.jpg -out demo.edge.jpg -cmds "edge; smartcrop 1200 800; watermark logo.png 20 20 0.5"
 ```
@@ -92,13 +102,46 @@ GOOS=js GOARCH=wasm go build -ldflags "-X main.wasmVersion=v0.1.0" -o vango.wasm
 - whitebalance
 - wb (alias for whitebalance)
 - auto_contrast
-- auto_color
+- auto_color (whitebalance + equalize + auto brightness + auto vibrance)
 - auto_brightness
 - auto_vibrance
+- **auto_full** (full auto enhance: whitebalance + noise reduction + equalize + auto brightness + auto vibrance)
+- **noise_reduction** / **denoise** (median-filter noise reduction; takes optional radius, default 1)
+- **collage** (align two images side by side or stacked; `collage <file> [horizontal|vertical]`)
 - edge
 - watermark
 - apply (registered plugin filter)
 - LUT3D (ApplyLUT3D via Pipeline.Apply / LUT helpers)
+
+## Image alignment / collage
+The `AlignImages` function (and the `Collage` Pipeline method) place two or more images into a
+single canvas:
+
+- **horizontal** (default): images are scaled to the same height and placed left-to-right.
+- **vertical**: images are scaled to the same width and placed top-to-bottom.
+
+```go
+// Code example – place two images side by side
+result := vango.AlignImages([]image.Image{img1, img2}, "horizontal", color.NRGBA{255, 255, 255, 255})
+
+// Fluent pipeline variant
+out := vango.From(img1).Collage(img2, "vertical", color.NRGBA{0, 0, 0, 255}).Image()
+```
+
+CLI usage:
+```bash
+./vango-cli -in left.jpg -out combined.jpg -cmds "collage right.jpg horizontal"
+```
+
+## Noise reduction
+`NoiseReduction` applies a median filter. A larger radius removes more noise but softens edges:
+
+```go
+denoised := vango.NoiseReduction(img, 1) // 3×3 median filter
+denoised2 := vango.NoiseReduction(img, 2) // 5×5 median filter
+// or via the pipeline:
+out := vango.From(img).NoiseReduction(1).Image()
+```
 
 ## Examples in code
 - See `example_test.go` for small example usages (these are run as examples by `go test`).

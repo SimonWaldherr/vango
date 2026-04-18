@@ -267,6 +267,51 @@ func applyCommand(p *vango.Pipeline, raw string) *vango.Pipeline {
 		p = vango.From(n).Brightness(autoBrightnessDelta(n))
 		brightnessAdjusted := p.Image()
 		p = vango.From(brightnessAdjusted).Saturation(autoVibranceFactor(brightnessAdjusted))
+	case "autofull", "auto_full", "autoenhance", "auto_enhance":
+		// Full auto: white balance + noise reduction + auto contrast + auto brightness + auto vibrance
+		p = p.WhiteBalance(emptyRect())
+		p = p.NoiseReduction(1)
+		p = p.Equalize()
+		n := vango.ToNRGBA(p.Image())
+		p = vango.From(n).Brightness(autoBrightnessDelta(n))
+		brightnessAdjusted := p.Image()
+		p = vango.From(brightnessAdjusted).Saturation(autoVibranceFactor(brightnessAdjusted))
+	case "noisereduction", "noise_reduction", "denoise":
+		radius := 1
+		if len(args) >= 1 {
+			radius = parseIntArg(args[0], 1)
+		}
+		p = p.NoiseReduction(radius)
+	case "collage":
+		// collage <file> [direction]
+		// direction: horizontal (default) or vertical
+		if len(args) >= 1 {
+			collagePath := filepath.Clean(args[0])
+			if collagePath == ".." || strings.HasPrefix(collagePath, ".."+string(filepath.Separator)) {
+				fmt.Fprintln(os.Stderr, "warning: collage path must not traverse parent directories")
+				break
+			}
+			cf, err := os.Open(collagePath)
+			if err == nil {
+				defer func() {
+					if cerr := cf.Close(); cerr != nil {
+						fmt.Fprintf(os.Stderr, "warning: closing collage file %s: %v\n", collagePath, cerr)
+					}
+				}()
+				other, _, derr := vango.Decode(cf)
+				if derr == nil {
+					dir := "horizontal"
+					if len(args) >= 2 {
+						dir = args[1]
+					}
+					p = vango.From(vango.AlignImages([]image.Image{p.Image(), other}, dir, color.NRGBA{255, 255, 255, 255}))
+				} else {
+					fmt.Fprintf(os.Stderr, "warning: decode collage image %s: %v\n", collagePath, derr)
+				}
+			} else {
+				fmt.Fprintf(os.Stderr, "warning: open collage image %s: %v\n", collagePath, err)
+			}
+		}
 	case "edge", "edgedetect", "edge_detect":
 		p = vango.From(vango.SobelEdges(p.Image()))
 	case "watermark":
