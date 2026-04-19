@@ -63,10 +63,10 @@ func CloneNRGBA(src *image.NRGBA) *image.NRGBA {
 }
 
 // parallel rows helper (cancellable)
-func parallelRows(ctx context.Context, h int, fn func(y int)) error {
+func parallelRows(ctx context.Context, startY, endY int, fn func(y int)) error {
 	workers := runtime.GOMAXPROCS(0)
-	if workers < 2 || h < 64 {
-		for y := 0; y < h; y++ {
+	if workers < 2 || (endY-startY) < 64 {
+		for y := startY; y < endY; y++ {
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
@@ -94,7 +94,7 @@ func parallelRows(ctx context.Context, h int, fn func(y int)) error {
 			}
 		}()
 	}
-	for y := 0; y < h; y++ {
+	for y := startY; y < endY; y++ {
 		select {
 		case <-ctx.Done():
 			close(rowCh)
@@ -141,7 +141,7 @@ func convolve1DHorizontal(ctx context.Context, src *image.NRGBA, k []float64) (*
 	r := src.Rect
 	dst := image.NewNRGBA(r)
 	radius := (len(k) - 1) / 2
-	err := parallelRows(ctx, r.Dy(), func(yy int) {
+	err := parallelRows(ctx, 0, r.Dy(), func(yy int) {
 		y := r.Min.Y + yy
 		for x := r.Min.X; x < r.Max.X; x++ {
 			var rr, gg, bb, aa float64
@@ -173,7 +173,7 @@ func convolve1DVertical(ctx context.Context, src *image.NRGBA, k []float64) (*im
 	r := src.Rect
 	dst := image.NewNRGBA(r)
 	radius := (len(k) - 1) / 2
-	err := parallelRows(ctx, r.Dy(), func(yy int) {
+	err := parallelRows(ctx, 0, r.Dy(), func(yy int) {
 		y := r.Min.Y + yy
 		for x := r.Min.X; x < r.Max.X; x++ {
 			var rr, gg, bb, aa float64
@@ -220,7 +220,7 @@ func UnsharpMask(src image.Image, amount, sigma float64, radius int) *image.NRGB
 	blur := GaussianBlur(base, sigma, radius)
 	r := base.Rect
 	out := image.NewNRGBA(r)
-	_ = parallelRows(context.Background(), r.Dy(), func(yy int) {
+	_ = parallelRows(context.Background(), 0, r.Dy(), func(yy int) {
 		y := r.Min.Y + yy
 		for x := r.Min.X; x < r.Max.X; x++ {
 			i := idx(base, x, y)
@@ -243,7 +243,7 @@ func SobelEdges(src image.Image) *image.Gray {
 	n := ToNRGBA(src)
 	r := n.Rect
 	out := image.NewGray(r)
-	_ = parallelRows(context.Background(), r.Dy(), func(yy int) {
+	_ = parallelRows(context.Background(), 0, r.Dy(), func(yy int) {
 		y := r.Min.Y + yy
 		for x := r.Min.X; x < r.Max.X; x++ {
 			var gx, gy float64
@@ -356,7 +356,7 @@ func AdjustBrightness(src image.Image, delta float64) *image.NRGBA {
 	n := ToNRGBA(src)
 	r := n.Rect
 	out := image.NewNRGBA(r)
-	_ = parallelRows(context.Background(), r.Dy(), func(yy int) {
+	_ = parallelRows(context.Background(), 0, r.Dy(), func(yy int) {
 		y := r.Min.Y + yy
 		for x := r.Min.X; x < r.Max.X; x++ {
 			i := idx(n, x, y)
@@ -378,7 +378,7 @@ func AdjustContrast(src image.Image, factor float64) *image.NRGBA {
 	n := ToNRGBA(src)
 	r := n.Rect
 	out := image.NewNRGBA(r)
-	_ = parallelRows(context.Background(), r.Dy(), func(yy int) {
+	_ = parallelRows(context.Background(), 0, r.Dy(), func(yy int) {
 		y := r.Min.Y + yy
 		for x := r.Min.X; x < r.Max.X; x++ {
 			i := idx(n, x, y)
@@ -395,7 +395,7 @@ func AdjustSaturation(src image.Image, factor float64) *image.NRGBA {
 	n := ToNRGBA(src)
 	r := n.Rect
 	out := image.NewNRGBA(r)
-	_ = parallelRows(context.Background(), r.Dy(), func(yy int) {
+	_ = parallelRows(context.Background(), 0, r.Dy(), func(yy int) {
 		y := r.Min.Y + yy
 		for x := r.Min.X; x < r.Max.X; x++ {
 			i := idx(n, x, y)
@@ -418,7 +418,7 @@ func AdjustHue(src image.Image, degrees float64) *image.NRGBA {
 	n := ToNRGBA(src)
 	r := n.Rect
 	out := image.NewNRGBA(r)
-	_ = parallelRows(context.Background(), r.Dy(), func(yy int) {
+	_ = parallelRows(context.Background(), 0, r.Dy(), func(yy int) {
 		y := r.Min.Y + yy
 		for x := r.Min.X; x < r.Max.X; x++ {
 			i := idx(n, x, y)
@@ -453,7 +453,7 @@ func Sepia(src image.Image, amount float64) *image.NRGBA {
 	n := ToNRGBA(src)
 	r := n.Rect
 	out := image.NewNRGBA(r)
-	_ = parallelRows(context.Background(), r.Dy(), func(yy int) {
+	_ = parallelRows(context.Background(), 0, r.Dy(), func(yy int) {
 		y := r.Min.Y + yy
 		for x := r.Min.X; x < r.Max.X; x++ {
 			i := idx(n, x, y)
@@ -540,7 +540,7 @@ func Threshold(src image.Image, cutoff uint8) *image.Gray {
 	n := ToNRGBA(src)
 	r := n.Rect
 	out := image.NewGray(r)
-	_ = parallelRows(context.Background(), r.Dy(), func(yy int) {
+	_ = parallelRows(context.Background(), 0, r.Dy(), func(yy int) {
 		y := r.Min.Y + yy
 		for x := r.Min.X; x < r.Max.X; x++ {
 			i := idx(n, x, y)
@@ -599,7 +599,7 @@ func WhiteBalanceByRect(src image.Image, ref image.Rectangle) *image.NRGBA {
 	gainB := target / avgB
 
 	out := image.NewNRGBA(r)
-	_ = parallelRows(context.Background(), r.Dy(), func(yy int) {
+	_ = parallelRows(context.Background(), 0, r.Dy(), func(yy int) {
 		y := r.Min.Y + yy
 		for x := r.Min.X; x < r.Max.X; x++ {
 			i := idx(n, x, y)
@@ -626,7 +626,7 @@ func NoiseReduction(src image.Image, radius int) *image.NRGBA {
 	r := n.Rect
 	out := image.NewNRGBA(r)
 	windowSize := (2*radius + 1) * (2*radius + 1)
-	_ = parallelRows(context.Background(), r.Dy(), func(yy int) {
+	_ = parallelRows(context.Background(), 0, r.Dy(), func(yy int) {
 		y := r.Min.Y + yy
 		bufR := make([]uint8, windowSize)
 		bufG := make([]uint8, windowSize)
@@ -715,7 +715,7 @@ func Affine(src image.Image, mat [6]float64, w, h int, method string, bg color.N
 	bounds := n.Rect
 	switch strings.ToLower(method) {
 	case "bilinear", "linear":
-		_ = parallelRows(context.Background(), h, func(yy int) {
+		_ = parallelRows(context.Background(), 0, h, func(yy int) {
 			y := float64(yy)
 			for x := 0; x < w; x++ {
 				fx := float64(x)
@@ -730,7 +730,7 @@ func Affine(src image.Image, mat [6]float64, w, h int, method string, bg color.N
 			}
 		})
 	default:
-		_ = parallelRows(context.Background(), h, func(yy int) {
+		_ = parallelRows(context.Background(), 0, h, func(yy int) {
 			y := float64(yy)
 			for x := 0; x < w; x++ {
 				fx := float64(x)
@@ -798,7 +798,7 @@ func FlipX(src image.Image) *image.NRGBA {
 	n := ToNRGBA(src)
 	r := n.Rect
 	out := image.NewNRGBA(r)
-	_ = parallelRows(context.Background(), r.Dy(), func(yy int) {
+	_ = parallelRows(context.Background(), 0, r.Dy(), func(yy int) {
 		y := r.Min.Y + yy
 		for x := r.Min.X; x < r.Max.X; x++ {
 			i := idx(n, r.Min.X+(r.Max.X-1-x), y)
@@ -812,7 +812,7 @@ func FlipY(src image.Image) *image.NRGBA {
 	n := ToNRGBA(src)
 	r := n.Rect
 	out := image.NewNRGBA(r)
-	_ = parallelRows(context.Background(), r.Dy(), func(yy int) {
+	_ = parallelRows(context.Background(), 0, r.Dy(), func(yy int) {
 		y := r.Min.Y + yy
 		for x := r.Min.X; x < r.Max.X; x++ {
 			i := idx(n, x, r.Min.Y+(r.Max.Y-1-y))
@@ -838,7 +838,7 @@ func ResizeNearest(src image.Image, w, h int) *image.NRGBA {
 	sx := float64(n.Rect.Dx()) / float64(w)
 	sy := float64(n.Rect.Dy()) / float64(h)
 	bg := color.NRGBA{0, 0, 0, 0}
-	_ = parallelRows(context.Background(), h, func(yy int) {
+	_ = parallelRows(context.Background(), 0, h, func(yy int) {
 		y := yy
 		for x := 0; x < w; x++ {
 			ix := int(math.Floor(float64(x)*sx)) + n.Rect.Min.X
@@ -859,7 +859,7 @@ func ResizeBilinear(src image.Image, w, h int) *image.NRGBA {
 	sx := float64(n.Rect.Dx()) / float64(w)
 	sy := float64(n.Rect.Dy()) / float64(h)
 	bg := color.NRGBA{0, 0, 0, 0}
-	_ = parallelRows(context.Background(), h, func(yy int) {
+	_ = parallelRows(context.Background(), 0, h, func(yy int) {
 		y := yy
 		for x := 0; x < w; x++ {
 			fx := float64(x)*sx + float64(n.Rect.Min.X)
@@ -1199,7 +1199,7 @@ func ApplyLUT3D(src image.Image, lut *LUT3D) *image.NRGBA {
 	n := ToNRGBA(src)
 	out := image.NewNRGBA(n.Rect)
 	s := float64(lut.Size - 1)
-	_ = parallelRows(context.Background(), n.Rect.Dy(), func(yy int) {
+	_ = parallelRows(context.Background(), 0, n.Rect.Dy(), func(yy int) {
 		y := n.Rect.Min.Y + yy
 		for x := n.Rect.Min.X; x < n.Rect.Max.X; x++ {
 			i := idx(n, x, y)
@@ -1569,7 +1569,7 @@ func EqualizeLuma(src image.Image) *image.NRGBA {
 	}
 	total := float64(r.Dx() * r.Dy())
 	out := image.NewNRGBA(r)
-	_ = parallelRows(context.Background(), r.Dy(), func(yy int) {
+	_ = parallelRows(context.Background(), 0, r.Dy(), func(yy int) {
 		y := r.Min.Y + yy
 		for x := r.Min.X; x < r.Max.X; x++ {
 			i := idx(n, x, y)
@@ -1598,7 +1598,7 @@ func TonemapReinhard(src image.Image, exposure float64) *image.NRGBA {
 	n := ToNRGBA(src)
 	r := n.Rect
 	out := image.NewNRGBA(r)
-	_ = parallelRows(context.Background(), r.Dy(), func(yy int) {
+	_ = parallelRows(context.Background(), 0, r.Dy(), func(yy int) {
 		y := r.Min.Y + yy
 		for x := r.Min.X; x < r.Max.X; x++ {
 			i := idx(n, x, y)
@@ -1890,8 +1890,8 @@ type PixelFunc func(r, g, b, a uint8) (uint8, uint8, uint8, uint8)
 
 type step struct {
 	name  string
-	pf    PixelFunc                       // if set, is a per-pixel op (fusible)
-	apply func(*image.NRGBA) *image.NRGBA // generic (blur, geometry, LUT3D, etc.)
+	pf    PixelFunc                                        // if set, is a per-pixel op (fusible)
+	apply func(context.Context, *image.NRGBA) *image.NRGBA // generic (blur, geometry, LUT3D, etc.)
 }
 
 type Pipeline struct {
@@ -1957,7 +1957,7 @@ func (p *Pipeline) execute(ctx context.Context) (*image.NRGBA, error) {
 		if s.pf != nil {
 			r := img.Rect
 			out := image.NewNRGBA(r)
-			err := parallelRows(ctx, r.Dy(), func(yy int) {
+			err := parallelRows(ctx, 0, r.Dy(), func(yy int) {
 				y := r.Min.Y + yy
 				for x := r.Min.X; x < r.Max.X; x++ {
 					i := idx(img, x, y)
@@ -1971,7 +1971,7 @@ func (p *Pipeline) execute(ctx context.Context) (*image.NRGBA, error) {
 			img = out
 			continue
 		}
-		img = s.apply(img)
+		img = s.apply(ctx, img)
 	}
 	p.img = img
 	p.steps = nil
@@ -2095,7 +2095,7 @@ func Emboss(src image.Image, strength float64) *image.NRGBA {
 	r := n.Rect
 	out := image.NewNRGBA(r)
 	// kernel: [-2 -1 0; -1 1 1; 0 1 2]
-	_ = parallelRows(context.Background(), r.Dy(), func(yy int) {
+	_ = parallelRows(context.Background(), 0, r.Dy(), func(yy int) {
 		y := r.Min.Y + yy
 		for x := r.Min.X; x < r.Max.X; x++ {
 			var accR, accG, accB float64
@@ -2146,7 +2146,7 @@ func Vignette(src image.Image, strength float64) *image.NRGBA {
 	cx := float64(r.Min.X + r.Dx()/2)
 	cy := float64(r.Min.Y + r.Dy()/2)
 	maxd := math.Hypot(float64(r.Dx())/2, float64(r.Dy())/2)
-	_ = parallelRows(context.Background(), r.Dy(), func(yy int) {
+	_ = parallelRows(context.Background(), 0, r.Dy(), func(yy int) {
 		y := r.Min.Y + yy
 		for x := r.Min.X; x < r.Max.X; x++ {
 			i := idx(n, x, y)
@@ -2218,75 +2218,75 @@ func (p *Pipeline) Gamma(g float64) *Pipeline {
 }
 
 func (p *Pipeline) GaussianBlur(sigma float64, radius int) *Pipeline {
-	p.steps = append(p.steps, step{name: "gaussianBlur", apply: func(in *image.NRGBA) *image.NRGBA { return GaussianBlur(in, sigma, radius) }})
+	p.steps = append(p.steps, step{name: "gaussianBlur", apply: func(_ context.Context, in *image.NRGBA) *image.NRGBA { return GaussianBlur(in, sigma, radius) }})
 	return p
 }
 func (p *Pipeline) Unsharp(amount, sigma float64, radius int) *Pipeline {
-	p.steps = append(p.steps, step{name: "unsharp", apply: func(in *image.NRGBA) *image.NRGBA { return UnsharpMask(in, amount, sigma, radius) }})
+	p.steps = append(p.steps, step{name: "unsharp", apply: func(_ context.Context, in *image.NRGBA) *image.NRGBA { return UnsharpMask(in, amount, sigma, radius) }})
 	return p
 }
 func (p *Pipeline) LUT3D(l *LUT3D) *Pipeline {
-	p.steps = append(p.steps, step{name: "lut3d", apply: func(in *image.NRGBA) *image.NRGBA { return ApplyLUT3D(in, l) }})
+	p.steps = append(p.steps, step{name: "lut3d", apply: func(_ context.Context, in *image.NRGBA) *image.NRGBA { return ApplyLUT3D(in, l) }})
 	return p
 }
 func (p *Pipeline) Pixelate(block int) *Pipeline {
-	p.steps = append(p.steps, step{name: "pixelate", apply: func(in *image.NRGBA) *image.NRGBA { return Pixelate(in, block) }})
+	p.steps = append(p.steps, step{name: "pixelate", apply: func(_ context.Context, in *image.NRGBA) *image.NRGBA { return Pixelate(in, block) }})
 	return p
 }
 func (p *Pipeline) Posterize(levels int) *Pipeline {
-	p.steps = append(p.steps, step{name: "posterize", apply: func(in *image.NRGBA) *image.NRGBA { return Posterize(in, levels) }})
+	p.steps = append(p.steps, step{name: "posterize", apply: func(_ context.Context, in *image.NRGBA) *image.NRGBA { return Posterize(in, levels) }})
 	return p
 }
 func (p *Pipeline) Threshold(cutoff uint8) *Pipeline {
-	p.steps = append(p.steps, step{name: "threshold", apply: func(in *image.NRGBA) *image.NRGBA { return ToNRGBA(Threshold(in, cutoff)) }})
+	p.steps = append(p.steps, step{name: "threshold", apply: func(_ context.Context, in *image.NRGBA) *image.NRGBA { return ToNRGBA(Threshold(in, cutoff)) }})
 	return p
 }
 func (p *Pipeline) WhiteBalance(rect image.Rectangle) *Pipeline {
-	p.steps = append(p.steps, step{name: "whitebalance", apply: func(in *image.NRGBA) *image.NRGBA { return WhiteBalanceByRect(in, rect) }})
+	p.steps = append(p.steps, step{name: "whitebalance", apply: func(_ context.Context, in *image.NRGBA) *image.NRGBA { return WhiteBalanceByRect(in, rect) }})
 	return p
 }
 func (p *Pipeline) Rotate(deg float64, method string, bg color.NRGBA) *Pipeline {
-	p.steps = append(p.steps, step{name: "rotate", apply: func(in *image.NRGBA) *image.NRGBA { return Rotate(in, deg, method, bg) }})
+	p.steps = append(p.steps, step{name: "rotate", apply: func(_ context.Context, in *image.NRGBA) *image.NRGBA { return Rotate(in, deg, method, bg) }})
 	return p
 }
 func (p *Pipeline) Skew(sx, sy float64, method string, bg color.NRGBA) *Pipeline {
-	p.steps = append(p.steps, step{name: "skew", apply: func(in *image.NRGBA) *image.NRGBA { return Skew(in, sx, sy, method, bg) }})
+	p.steps = append(p.steps, step{name: "skew", apply: func(_ context.Context, in *image.NRGBA) *image.NRGBA { return Skew(in, sx, sy, method, bg) }})
 	return p
 }
 func (p *Pipeline) ResizeBilinear(w, h int) *Pipeline {
-	p.steps = append(p.steps, step{name: "resizeBilinear", apply: func(in *image.NRGBA) *image.NRGBA { return ResizeBilinear(in, w, h) }})
+	p.steps = append(p.steps, step{name: "resizeBilinear", apply: func(_ context.Context, in *image.NRGBA) *image.NRGBA { return ResizeBilinear(in, w, h) }})
 	return p
 }
 func (p *Pipeline) ResizeNearest(w, h int) *Pipeline {
-	p.steps = append(p.steps, step{name: "resizeNearest", apply: func(in *image.NRGBA) *image.NRGBA { return ResizeNearest(in, w, h) }})
+	p.steps = append(p.steps, step{name: "resizeNearest", apply: func(_ context.Context, in *image.NRGBA) *image.NRGBA { return ResizeNearest(in, w, h) }})
 	return p
 }
 func (p *Pipeline) Crop(rect image.Rectangle) *Pipeline {
-	p.steps = append(p.steps, step{name: "crop", apply: func(in *image.NRGBA) *image.NRGBA { return Crop(in, rect) }})
+	p.steps = append(p.steps, step{name: "crop", apply: func(_ context.Context, in *image.NRGBA) *image.NRGBA { return Crop(in, rect) }})
 	return p
 }
 func (p *Pipeline) Trim(col color.NRGBA, tol uint8) *Pipeline {
-	p.steps = append(p.steps, step{name: "trim", apply: func(in *image.NRGBA) *image.NRGBA { return TrimByColor(in, col, tol) }})
+	p.steps = append(p.steps, step{name: "trim", apply: func(_ context.Context, in *image.NRGBA) *image.NRGBA { return TrimByColor(in, col, tol) }})
 	return p
 }
 func (p *Pipeline) Watermark(mark image.Image, pos image.Point, opacity float64) *Pipeline {
-	p.steps = append(p.steps, step{name: "watermark", apply: func(in *image.NRGBA) *image.NRGBA { return WatermarkImage(in, mark, pos, opacity) }})
+	p.steps = append(p.steps, step{name: "watermark", apply: func(_ context.Context, in *image.NRGBA) *image.NRGBA { return WatermarkImage(in, mark, pos, opacity) }})
 	return p
 }
 func (p *Pipeline) Equalize() *Pipeline {
-	p.steps = append(p.steps, step{name: "equalize", apply: func(in *image.NRGBA) *image.NRGBA { return EqualizeLuma(in) }})
+	p.steps = append(p.steps, step{name: "equalize", apply: func(_ context.Context, in *image.NRGBA) *image.NRGBA { return EqualizeLuma(in) }})
 	return p
 }
 func (p *Pipeline) Tonemap(exposure float64) *Pipeline {
-	p.steps = append(p.steps, step{name: "tonemap", apply: func(in *image.NRGBA) *image.NRGBA { return TonemapReinhard(in, exposure) }})
+	p.steps = append(p.steps, step{name: "tonemap", apply: func(_ context.Context, in *image.NRGBA) *image.NRGBA { return TonemapReinhard(in, exposure) }})
 	return p
 }
 func (p *Pipeline) Dither(levels int) *Pipeline {
-	p.steps = append(p.steps, step{name: "ditherFS", apply: func(in *image.NRGBA) *image.NRGBA { return DitherFS(in, levels) }})
+	p.steps = append(p.steps, step{name: "ditherFS", apply: func(_ context.Context, in *image.NRGBA) *image.NRGBA { return DitherFS(in, levels) }})
 	return p
 }
 func (p *Pipeline) DrawText(s string, at image.Point, col color.NRGBA, scale int) *Pipeline {
-	p.steps = append(p.steps, step{name: "text", apply: func(in *image.NRGBA) *image.NRGBA {
+	p.steps = append(p.steps, step{name: "text", apply: func(_ context.Context, in *image.NRGBA) *image.NRGBA {
 		out := CloneNRGBA(in)
 		DrawString5x7(out, s, at, col, scale)
 		return out
@@ -2304,22 +2304,22 @@ func (p *Pipeline) Solarize(cutoff uint8) *Pipeline {
 	return p
 }
 func (p *Pipeline) Emboss(strength float64) *Pipeline {
-	p.steps = append(p.steps, step{name: "emboss", apply: func(in *image.NRGBA) *image.NRGBA { return Emboss(in, strength) }})
+	p.steps = append(p.steps, step{name: "emboss", apply: func(_ context.Context, in *image.NRGBA) *image.NRGBA { return Emboss(in, strength) }})
 	return p
 }
 func (p *Pipeline) Vignette(strength float64) *Pipeline {
-	p.steps = append(p.steps, step{name: "vignette", apply: func(in *image.NRGBA) *image.NRGBA { return Vignette(in, strength) }})
+	p.steps = append(p.steps, step{name: "vignette", apply: func(_ context.Context, in *image.NRGBA) *image.NRGBA { return Vignette(in, strength) }})
 	return p
 }
 func (p *Pipeline) NoiseReduction(radius int) *Pipeline {
-	p.steps = append(p.steps, step{name: "noiseReduction", apply: func(in *image.NRGBA) *image.NRGBA { return NoiseReduction(in, radius) }})
+	p.steps = append(p.steps, step{name: "noiseReduction", apply: func(_ context.Context, in *image.NRGBA) *image.NRGBA { return NoiseReduction(in, radius) }})
 	return p
 }
 
 // Collage places the current pipeline image and other side by side or stacked.
 // direction: "horizontal"/"h" (default) or "vertical"/"v". bg fills any gap.
 func (p *Pipeline) Collage(other image.Image, direction string, bg color.NRGBA) *Pipeline {
-	p.steps = append(p.steps, step{name: "collage", apply: func(in *image.NRGBA) *image.NRGBA {
+	p.steps = append(p.steps, step{name: "collage", apply: func(_ context.Context, in *image.NRGBA) *image.NRGBA {
 		return AlignImages([]image.Image{in, other}, direction, bg)
 	}})
 	return p
@@ -2333,7 +2333,7 @@ var Registry = map[string]FilterFunc{}
 func Register(name string, f FilterFunc) { Registry[name] = f }
 
 func (p *Pipeline) Apply(name string) *Pipeline {
-	p.steps = append(p.steps, step{name: "apply:" + name, apply: func(in *image.NRGBA) *image.NRGBA {
+	p.steps = append(p.steps, step{name: "apply:" + name, apply: func(_ context.Context, in *image.NRGBA) *image.NRGBA {
 		if f, ok := Registry[name]; ok {
 			return f(in)
 		}

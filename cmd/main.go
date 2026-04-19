@@ -314,6 +314,130 @@ func applyCommand(p *vango.Pipeline, raw string) *vango.Pipeline {
 		}
 	case "edge", "edgedetect", "edge_detect":
 		p = vango.From(vango.SobelEdges(p.Image()))
+	case "sharpen":
+		amount := 1.0
+		if len(args) >= 1 {
+			amount = parseFloatArg(args[0], 1)
+		}
+		p = p.SharpenConvolution(amount)
+	case "highpasssharpen", "high_pass_sharpen":
+		amount := 1.0
+		radius := 3
+		if len(args) >= 1 {
+			amount = parseFloatArg(args[0], 1)
+		}
+		if len(args) >= 2 {
+			radius = parseIntArg(args[1], 3)
+		}
+		p = p.HighPassSharpen(amount, radius)
+	case "clarity":
+		strength := 0.5
+		if len(args) >= 1 {
+			strength = parseFloatArg(args[0], 0.5)
+		}
+		p = p.Clarity(strength)
+	case "levels":
+		if len(args) >= 5 {
+			p = p.Levels(parseFloatArg(args[0], 0), parseFloatArg(args[1], 255), parseFloatArg(args[2], 1), parseFloatArg(args[3], 0), parseFloatArg(args[4], 255))
+		}
+	case "channelmix", "channel_mix":
+		if len(args) >= 9 {
+			p = p.ChannelMix(
+				parseFloatArg(args[0], 1), parseFloatArg(args[1], 0), parseFloatArg(args[2], 0),
+				parseFloatArg(args[3], 0), parseFloatArg(args[4], 1), parseFloatArg(args[5], 0),
+				parseFloatArg(args[6], 0), parseFloatArg(args[7], 0), parseFloatArg(args[8], 1),
+			)
+		}
+	case "colorbalance", "color_balance":
+		if len(args) >= 9 {
+			p = p.ColorBalance(
+				parseFloatArg(args[0], 0), parseFloatArg(args[1], 0), parseFloatArg(args[2], 0),
+				parseFloatArg(args[3], 0), parseFloatArg(args[4], 0), parseFloatArg(args[5], 0),
+				parseFloatArg(args[6], 0), parseFloatArg(args[7], 0), parseFloatArg(args[8], 0),
+			)
+		}
+	case "hslselective", "hsl_selective":
+		if len(args) >= 4 {
+			p = p.HSLSelective(parseFloatArg(args[0], 0), parseFloatArg(args[1], 30), parseFloatArg(args[2], 1), parseFloatArg(args[3], 0))
+		}
+	case "motionblur", "motion_blur":
+		if len(args) >= 2 {
+			p = p.MotionBlur(parseFloatArg(args[0], 0), parseIntArg(args[1], 10))
+		}
+	case "radialblur", "radial_blur":
+		if len(args) >= 3 {
+			p = p.RadialBlur(parseFloatArg(args[0], 0), parseFloatArg(args[1], 0), parseFloatArg(args[2], 0.05), 10)
+		}
+	case "glow":
+		sigma := 5.0
+		intensity := 0.5
+		if len(args) >= 1 {
+			sigma = parseFloatArg(args[0], 5)
+		}
+		if len(args) >= 2 {
+			intensity = parseFloatArg(args[1], 0.5)
+		}
+		p = p.Glow(sigma, intensity)
+	case "halftone":
+		dotSize := 4
+		if len(args) >= 1 {
+			dotSize = parseIntArg(args[0], 4)
+		}
+		p = p.Halftone(dotSize)
+	case "oilpainting", "oil_painting":
+		radius := 3
+		levels := 20
+		if len(args) >= 1 {
+			radius = parseIntArg(args[0], 3)
+		}
+		if len(args) >= 2 {
+			levels = parseIntArg(args[1], 20)
+		}
+		p = p.OilPainting(radius, levels)
+	case "chromaticaberration", "chromatic_aberration":
+		shift := 3.0
+		if len(args) >= 1 {
+			shift = parseFloatArg(args[0], 3)
+		}
+		p = p.ChromaticAberration(shift)
+	case "addnoise", "add_noise":
+		amount := 0.1
+		if len(args) >= 1 {
+			amount = parseFloatArg(args[0], 0.1)
+		}
+		p = p.AddNoise(amount, false)
+	case "tiltshift", "tilt_shift":
+		focusY := 0.5
+		bandW := 0.3
+		sigma := 5.0
+		if len(args) >= 1 {
+			focusY = parseFloatArg(args[0], 0.5)
+		}
+		if len(args) >= 2 {
+			bandW = parseFloatArg(args[1], 0.3)
+		}
+		if len(args) >= 3 {
+			sigma = parseFloatArg(args[2], 5)
+		}
+		p = p.TiltShift(focusY, bandW, sigma)
+	case "colortemperature", "color_temperature":
+		if len(args) >= 1 {
+			p = p.ColorTemperature(parseFloatArg(args[0], 0))
+		}
+	case "bilateral":
+		ss := 3.0
+		sr := 30.0
+		if len(args) >= 1 {
+			ss = parseFloatArg(args[0], 3)
+		}
+		if len(args) >= 2 {
+			sr = parseFloatArg(args[1], 30)
+		}
+		p = p.BilateralFilter(ss, sr)
+	case "flipx", "flip_x":
+		p = p.FlipX()
+	case "flipy", "flip_y":
+		p = p.FlipY()
 	case "watermark":
 		if len(args) >= 4 {
 			if strings.Contains(args[0], "..") {

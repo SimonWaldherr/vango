@@ -24,3 +24,5 @@ _testmain.go
 *.prof
 demo.*.jpg
 vango-cli
+dist
+vango.wasm
