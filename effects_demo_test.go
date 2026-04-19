@@ -27,7 +27,7 @@ func TestGenerateDemos(t *testing.T) {
 				i := y*n.Stride + x*4
 				n.Pix[i+0] = uint8((x * 3) % 256)
 				n.Pix[i+1] = uint8((y * 5) % 256)
-				n.Pix[i+2] = uint8((x+y) % 256)
+				n.Pix[i+2] = uint8((x + y) % 256)
 				n.Pix[i+3] = 255
 			}
 		}
@@ -50,9 +50,9 @@ func TestGenerateDemos(t *testing.T) {
 
 	// list of effects to generate
 	// use reasonable default args
-	effects := []struct{
+	effects := []struct {
 		name string
-		fn func(image.Image) image.Image
+		fn   func(image.Image) image.Image
 	}{
 		{"blur", func(i image.Image) image.Image { return vango.GaussianBlur(i, 1.2, 0) }},
 		{"unsharp", func(i image.Image) image.Image { return vango.UnsharpMask(i, 0.6, 1.0, 0) }},
@@ -63,21 +63,31 @@ func TestGenerateDemos(t *testing.T) {
 		{"sepia", func(i image.Image) image.Image { return vango.Sepia(i, 0.25) }},
 		{"invert", func(i image.Image) image.Image { return vango.Invert(i) }},
 		{"gamma", func(i image.Image) image.Image { return vango.Gamma(i, 1.2) }},
-		{"rotate", func(i image.Image) image.Image { return vango.Rotate(i, 15, "bilinear", color.NRGBA{255,255,255,255}) }},
+		{"rotate", func(i image.Image) image.Image {
+			return vango.Rotate(i, 15, "bilinear", color.NRGBA{255, 255, 255, 255})
+		}},
 		{"resize", func(i image.Image) image.Image { return vango.ResizeBilinear(i, 400, 300) }},
-		{"crop", func(i image.Image) image.Image { b := i.Bounds(); return vango.Crop(i, image.Rect(b.Min.X+10, b.Min.Y+10, b.Min.X+410, b.Min.Y+310)) }},
+		{"crop", func(i image.Image) image.Image {
+			b := i.Bounds()
+			return vango.Crop(i, image.Rect(b.Min.X+10, b.Min.Y+10, b.Min.X+410, b.Min.Y+310))
+		}},
 		{"pixelate", func(i image.Image) image.Image { return vango.Pixelate(i, 8) }},
 		{"posterize", func(i image.Image) image.Image { return vango.Posterize(i, 6) }},
 		{"threshold", func(i image.Image) image.Image { return vango.Threshold(i, 128) }},
 		{"equalize", func(i image.Image) image.Image { return vango.EqualizeLuma(i) }},
 		{"tonemap", func(i image.Image) image.Image { return vango.TonemapReinhard(i, 1.0) }},
 		{"dither", func(i image.Image) image.Image { return vango.DitherFS(i, 4) }},
-		{"text", func(i image.Image) image.Image { return vango.From(i).DrawText("Demo", image.Pt(10,10), color.NRGBA{255,0,0,255}, 2).Image() }},
+		{"text", func(i image.Image) image.Image {
+			return vango.From(i).DrawText("Demo", image.Pt(10, 10), color.NRGBA{255, 0, 0, 255}, 2).Image()
+		}},
 		{"grayscale", func(i image.Image) image.Image { return vango.From(i).Grayscale().Image() }},
 		{"solarize", func(i image.Image) image.Image { return vango.Solarize(i, 128) }},
 		{"emboss", func(i image.Image) image.Image { return vango.Emboss(i, 0.6) }},
 		{"vignette", func(i image.Image) image.Image { return vango.Vignette(i, 0.6) }},
-		{"whitebalance", func(i image.Image) image.Image { b := i.Bounds(); return vango.WhiteBalanceByRect(vango.ToNRGBA(i), image.Rect(b.Min.X, b.Min.Y, b.Min.X+50, b.Min.Y+50)) }},
+		{"whitebalance", func(i image.Image) image.Image {
+			b := i.Bounds()
+			return vango.WhiteBalanceByRect(vango.ToNRGBA(i), image.Rect(b.Min.X, b.Min.Y, b.Min.X+50, b.Min.Y+50))
+		}},
 	}
 
 	for _, e := range effects {

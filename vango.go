@@ -2169,6 +2169,7 @@ func Vignette(src image.Image, strength float64) *image.NRGBA {
 
 // Convenience one-shot functions for grayscale and solarize
 func Grayscale(src image.Image) *image.NRGBA { return ToNRGBA(ApplyLUT1D(src, LUT1D{})) }
+
 // Note: Implement Grayscale properly (using pf)
 func GrayscaleProper(src image.Image) *image.NRGBA {
 	n := ToNRGBA(src)
@@ -2294,10 +2295,22 @@ func (p *Pipeline) DrawText(s string, at image.Point, col color.NRGBA, scale int
 }
 
 // New chainable effects
-func (p *Pipeline) Grayscale() *Pipeline { p.steps = append(p.steps, step{name: "grayscale", pf: pfGrayscale()}); return p }
-func (p *Pipeline) Solarize(cutoff uint8) *Pipeline { p.steps = append(p.steps, step{name: "solarize", pf: pfSolarize(cutoff)}); return p }
-func (p *Pipeline) Emboss(strength float64) *Pipeline { p.steps = append(p.steps, step{name: "emboss", apply: func(in *image.NRGBA) *image.NRGBA { return Emboss(in, strength) }}); return p }
-func (p *Pipeline) Vignette(strength float64) *Pipeline { p.steps = append(p.steps, step{name: "vignette", apply: func(in *image.NRGBA) *image.NRGBA { return Vignette(in, strength) }}); return p }
+func (p *Pipeline) Grayscale() *Pipeline {
+	p.steps = append(p.steps, step{name: "grayscale", pf: pfGrayscale()})
+	return p
+}
+func (p *Pipeline) Solarize(cutoff uint8) *Pipeline {
+	p.steps = append(p.steps, step{name: "solarize", pf: pfSolarize(cutoff)})
+	return p
+}
+func (p *Pipeline) Emboss(strength float64) *Pipeline {
+	p.steps = append(p.steps, step{name: "emboss", apply: func(in *image.NRGBA) *image.NRGBA { return Emboss(in, strength) }})
+	return p
+}
+func (p *Pipeline) Vignette(strength float64) *Pipeline {
+	p.steps = append(p.steps, step{name: "vignette", apply: func(in *image.NRGBA) *image.NRGBA { return Vignette(in, strength) }})
+	return p
+}
 func (p *Pipeline) NoiseReduction(radius int) *Pipeline {
 	p.steps = append(p.steps, step{name: "noiseReduction", apply: func(in *image.NRGBA) *image.NRGBA { return NoiseReduction(in, radius) }})
 	return p
