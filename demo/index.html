@@ -1,0 +1,1200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vango WASM Demo</title>
+<style>
+/* ─── Reset & Variables ─────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:       #0f1117;
+  --surface:  #1a1d27;
+  --border:   #2e3148;
+  --accent:   #6c63ff;
+  --accent2:  #ff6584;
+  --text:     #e2e4f0;
+  --muted:    #8b8fa8;
+  --success:  #4caf88;
+  --warn:     #f4a261;
+  --radius:   8px;
+  --shadow:   0 4px 24px rgba(0,0,0,.45);
+}
+
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ─── Header ────────────────────────────────────────────────── */
+header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+header h1 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+header .version { font-size: .78rem; color: var(--muted); margin-left: -8px; }
+header .spacer { flex: 1; }
+.status-dot {
+  width: 9px; height: 9px; border-radius: 50%;
+  background: var(--muted); display: inline-block; margin-right: 6px;
+  transition: background .3s;
+}
+.status-dot.ready  { background: var(--success); }
+.status-dot.error  { background: var(--accent2); }
+#status-text { font-size: .82rem; color: var(--muted); }
+
+/* ─── Main layout ───────────────────────────────────────────── */
+main {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 310px 1fr;
+  gap: 0;
+  overflow: hidden;
+}
+
+/* ─── Sidebar ───────────────────────────────────────────────── */
+#sidebar {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  padding: 16px 14px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.section-header {
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 4px 0 6px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  user-select: none;
+}
+.section-header::after { content: '▾'; transition: transform .2s; }
+.section-header.collapsed::after { transform: rotate(-90deg); }
+.section-body { display: flex; flex-direction: column; gap: 8px; }
+.section-body.hidden { display: none; }
+
+/* ─── Controls ──────────────────────────────────────────────── */
+.ctrl { display: flex; flex-direction: column; gap: 3px; }
+.ctrl-row {
+  display: flex; align-items: center; gap: 6px;
+}
+.ctrl label {
+  font-size: .8rem;
+  color: var(--muted);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.ctrl label span.val {
+  font-family: monospace;
+  font-size: .78rem;
+  color: var(--text);
+  min-width: 38px;
+  text-align: right;
+}
+input[type=range] {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  border: 2px solid var(--bg);
+  transition: transform .1s;
+}
+input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.25); }
+input[type=range].changed { background: linear-gradient(to right, var(--accent) 0%, var(--accent) var(--pct, 50%), var(--border) var(--pct, 50%)); }
+
+select {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 5px 10px;
+  border-radius: var(--radius);
+  font-size: .82rem;
+  width: 100%;
+  cursor: pointer;
+}
+select:focus { outline: 1px solid var(--accent); }
+
+input[type=checkbox] {
+  accent-color: var(--accent);
+  width: 15px; height: 15px; cursor: pointer; flex-shrink: 0;
+}
+.ctrl-check {
+  display: flex; align-items: center; gap: 8px;
+  font-size: .82rem; color: var(--text); cursor: pointer;
+}
+
+button {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  padding: 7px 14px;
+  border-radius: var(--radius);
+  font-size: .82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity .15s, transform .1s;
+}
+button:hover { opacity: .88; }
+button:active { transform: scale(.97); }
+button.secondary {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+button.danger { background: var(--accent2); }
+button:disabled { opacity: .4; cursor: default; }
+
+/* ─── Right panel ───────────────────────────────────────────── */
+#content {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ─── Image upload zone ─────────────────────────────────────── */
+#drop-zone {
+  margin: 16px;
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  text-align: center;
+  color: var(--muted);
+  font-size: .85rem;
+  transition: border-color .2s, background .2s;
+  cursor: pointer;
+}
+#drop-zone.drag-over {
+  border-color: var(--accent);
+  background: rgba(108,99,255,.06);
+}
+#drop-zone input { display: none; }
+#drop-zone .upload-hint { margin-top: 4px; font-size: .74rem; }
+
+/* ─── Canvas area ───────────────────────────────────────────── */
+#canvas-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0 16px 16px;
+}
+
+.tab-bar {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0;
+}
+.tab {
+  padding: 7px 16px;
+  font-size: .82rem;
+  font-weight: 600;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  color: var(--muted);
+  transition: color .15s, border-color .15s;
+  margin-bottom: -1px;
+}
+.tab.active { color: var(--accent); border-color: var(--accent); }
+
+.canvas-wrapper {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: repeating-conic-gradient(#1a1d2788 0% 25%, #12141d88 0% 50%) 0 0 / 20px 20px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  min-height: 200px;
+  position: relative;
+}
+canvas {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  display: none;
+}
+canvas.active { display: block; }
+#img-b64 {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  display: none;
+}
+#img-b64.active { display: block; }
+#canvas-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: .88rem;
+  pointer-events: none;
+}
+#canvas-placeholder svg { opacity: .3; }
+
+/* ─── Info bar ──────────────────────────────────────────────── */
+#info-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 16px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  font-size: .78rem;
+  color: var(--muted);
+  flex-wrap: wrap;
+}
+#info-bar .info-item strong { color: var(--text); }
+.processing-spinner {
+  width: 14px; height: 14px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .6s linear infinite;
+  display: none;
+}
+.processing-spinner.visible { display: inline-block; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ─── CLI & Benchmark panel ─────────────────────────────────── */
+#bottom-panel {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 12px 16px 16px;
+  border-top: 1px solid var(--border);
+}
+.panel-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+}
+.panel-card h3 {
+  font-size: .78rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+#cli-cmd {
+  font-family: monospace;
+  font-size: .78rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 8px 10px;
+  color: #a8d8a8;
+  white-space: pre-wrap;
+  word-break: break-all;
+  min-height: 48px;
+  max-height: 80px;
+  overflow-y: auto;
+}
+#bench-controls { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
+#bench-results { font-size: .78rem; color: var(--text); }
+#bench-results table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+#bench-results td, #bench-results th {
+  padding: 3px 6px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+#bench-results th { color: var(--muted); font-weight: 600; font-size: .72rem; }
+
+/* ─── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 820px) {
+  main { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+  #sidebar { border-right: none; border-bottom: 1px solid var(--border); max-height: 55vh; }
+  #bottom-panel { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════ HEADER ═══════════════════════════════ -->
+<header>
+  <h1>🎨 Vango</h1>
+  <span class="version" id="wasm-version">loading…</span>
+  <span class="spacer"></span>
+  <span class="status-dot" id="status-dot"></span>
+  <span id="status-text">Loading WASM…</span>
+</header>
+
+<!-- ═══════════════════════ MAIN ═════════════════════════════════ -->
+<main>
+
+  <!-- ──── SIDEBAR (controls) ──── -->
+  <aside id="sidebar">
+
+    <!-- Image source -->
+    <div class="section">
+      <div class="section-header">Image</div>
+      <div class="section-body">
+        <div id="drop-zone" role="button" tabindex="0" title="Drop an image or click to choose">
+          <input type="file" id="file-input" accept="image/*">
+          <div>📂 Drop image here or <strong style="color:var(--accent)">click to upload</strong></div>
+          <div class="upload-hint">JPEG · PNG · GIF · BMP · TIFF  (images wider than 900 px are downscaled for performance)</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <button id="btn-sample" style="flex:1">Load Sample</button>
+          <button id="btn-reset" class="secondary" style="flex:1">Reset All</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Adjustments -->
+    <div class="section">
+      <div class="section-header">Adjustments</div>
+      <div class="section-body" id="sec-adjustments">
+        <div class="ctrl" data-cmd="brightness" data-default="0">
+          <label>Brightness <span class="val" id="lbl-brightness">0.00</span></label>
+          <input type="range" id="brightness" min="-0.5" max="0.5" step="0.01" value="0">
+        </div>
+        <div class="ctrl" data-cmd="contrast" data-default="1">
+          <label>Contrast <span class="val" id="lbl-contrast">1.00</span></label>
+          <input type="range" id="contrast" min="0.1" max="3" step="0.05" value="1">
+        </div>
+        <div class="ctrl" data-cmd="saturation" data-default="1">
+          <label>Saturation <span class="val" id="lbl-saturation">1.00</span></label>
+          <input type="range" id="saturation" min="0" max="3" step="0.05" value="1">
+        </div>
+        <div class="ctrl" data-cmd="hue" data-default="0">
+          <label>Hue (°) <span class="val" id="lbl-hue">0</span></label>
+          <input type="range" id="hue" min="-180" max="180" step="1" value="0">
+        </div>
+        <div class="ctrl" data-cmd="gamma" data-default="1">
+          <label>Gamma <span class="val" id="lbl-gamma">1.00</span></label>
+          <input type="range" id="gamma" min="0.1" max="3" step="0.05" value="1">
+        </div>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="section">
+      <div class="section-header">Filters</div>
+      <div class="section-body" id="sec-filters">
+        <div class="ctrl" data-cmd="blur" data-default="0">
+          <label>Blur (σ) <span class="val" id="lbl-blur">0.0</span></label>
+          <input type="range" id="blur" min="0" max="8" step="0.1" value="0">
+        </div>
+        <div class="ctrl" data-cmd="sepia" data-default="0">
+          <label>Sepia <span class="val" id="lbl-sepia">0.00</span></label>
+          <input type="range" id="sepia" min="0" max="1" step="0.01" value="0">
+        </div>
+        <div class="ctrl" data-cmd="vignette" data-default="0">
+          <label>Vignette <span class="val" id="lbl-vignette">0.00</span></label>
+          <input type="range" id="vignette" min="0" max="1" step="0.01" value="0">
+        </div>
+        <div class="ctrl" data-cmd="emboss" data-default="0">
+          <label>Emboss <span class="val" id="lbl-emboss">0.00</span></label>
+          <input type="range" id="emboss" min="0" max="2" step="0.05" value="0">
+        </div>
+        <div class="ctrl" data-cmd="tonemap" data-default="1">
+          <label>Tonemap (exp) <span class="val" id="lbl-tonemap">1.00</span></label>
+          <input type="range" id="tonemap" min="0.1" max="4" step="0.05" value="1">
+        </div>
+      </div>
+    </div>
+
+    <!-- Effects -->
+    <div class="section">
+      <div class="section-header">Effects</div>
+      <div class="section-body" id="sec-effects">
+        <label class="ctrl-check"><input type="checkbox" id="grayscale"> Grayscale</label>
+        <label class="ctrl-check"><input type="checkbox" id="invert"> Invert</label>
+        <label class="ctrl-check"><input type="checkbox" id="equalize"> Equalize (histogram)</label>
+        <label class="ctrl-check"><input type="checkbox" id="edge"> Edge detect (Sobel)</label>
+        <div class="ctrl" data-cmd="pixelate" data-default="1">
+          <label>Pixelate (block) <span class="val" id="lbl-pixelate">1</span></label>
+          <input type="range" id="pixelate" min="1" max="32" step="1" value="1">
+        </div>
+        <label class="ctrl-check">
+          <input type="checkbox" id="posterize-on">
+          Posterize
+        </label>
+        <div class="ctrl" id="posterize-ctrl" style="margin-left:20px;display:none">
+          <label>Levels <span class="val" id="lbl-posterize">4</span></label>
+          <input type="range" id="posterize" min="2" max="16" step="1" value="4">
+        </div>
+        <label class="ctrl-check">
+          <input type="checkbox" id="threshold-on">
+          Threshold
+        </label>
+        <div class="ctrl" id="threshold-ctrl" style="margin-left:20px;display:none">
+          <label>Cutoff <span class="val" id="lbl-threshold">128</span></label>
+          <input type="range" id="threshold" min="0" max="255" step="1" value="128">
+        </div>
+        <label class="ctrl-check">
+          <input type="checkbox" id="solarize-on">
+          Solarize
+        </label>
+        <div class="ctrl" id="solarize-ctrl" style="margin-left:20px;display:none">
+          <label>Cutoff <span class="val" id="lbl-solarize">128</span></label>
+          <input type="range" id="solarize" min="0" max="255" step="1" value="128">
+        </div>
+        <label class="ctrl-check">
+          <input type="checkbox" id="dither-on">
+          Dither
+        </label>
+        <div class="ctrl" id="dither-ctrl" style="margin-left:20px;display:none">
+          <label>Levels <span class="val" id="lbl-dither">4</span></label>
+          <input type="range" id="dither" min="2" max="8" step="1" value="4">
+        </div>
+        <label class="ctrl-check">
+          <input type="checkbox" id="denoise-on">
+          Noise Reduction
+        </label>
+        <div class="ctrl" id="denoise-ctrl" style="margin-left:20px;display:none">
+          <label>Radius <span class="val" id="lbl-denoise">1</span></label>
+          <input type="range" id="denoise" min="1" max="4" step="1" value="1">
+        </div>
+      </div>
+    </div>
+
+    <!-- Auto Modes -->
+    <div class="section">
+      <div class="section-header">Auto Enhance</div>
+      <div class="section-body">
+        <div class="ctrl">
+          <label>Mode</label>
+          <select id="auto-mode">
+            <option value="">— None —</option>
+            <option value="auto_brightness">Auto Brightness</option>
+            <option value="auto_contrast">Auto Contrast</option>
+            <option value="auto_vibrance">Auto Vibrance</option>
+            <option value="auto_color">Auto Color</option>
+            <option value="auto_full">Auto Full (all)</option>
+            <option value="whitebalance">White Balance</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Transform -->
+    <div class="section">
+      <div class="section-header">Transform</div>
+      <div class="section-body">
+        <div class="ctrl" data-cmd="rotate" data-default="0">
+          <label>Rotate (°) <span class="val" id="lbl-rotate">0</span></label>
+          <input type="range" id="rotate" min="-180" max="180" step="1" value="0">
+        </div>
+        <div class="ctrl" data-cmd="skew-x" data-default="0">
+          <label>Skew X <span class="val" id="lbl-skew-x">0.00</span></label>
+          <input type="range" id="skew-x" min="-0.5" max="0.5" step="0.01" value="0">
+        </div>
+        <div class="ctrl" data-cmd="skew-y" data-default="0">
+          <label>Skew Y <span class="val" id="lbl-skew-y">0.00</span></label>
+          <input type="range" id="skew-y" min="-0.5" max="0.5" step="0.01" value="0">
+        </div>
+      </div>
+    </div>
+
+  </aside><!-- /sidebar -->
+
+  <!-- ──── RIGHT PANEL ──── -->
+  <div id="content">
+
+    <!-- Drop zone (only when no image loaded) -->
+    <div id="drop-zone-outer" style="padding:16px 16px 0">
+      <!-- hidden by JS once image is loaded -->
+    </div>
+
+    <!-- Tabs + canvas -->
+    <div id="canvas-area">
+      <div class="tab-bar">
+        <div class="tab active" data-tab="canvas2d">Canvas 2D</div>
+        <div class="tab" data-tab="webgl">WebGL</div>
+        <div class="tab" data-tab="base64">Base64 &lt;img&gt;</div>
+      </div>
+
+      <div class="canvas-wrapper" id="canvas-wrapper">
+        <div id="canvas-placeholder">
+          <svg width="56" height="56" viewBox="0 0 56 56" fill="none">
+            <rect width="56" height="56" rx="12" fill="#2e3148"/>
+            <path d="M14 38l10-14 8 10 6-8 4 12H14z" fill="#6c63ff" opacity=".5"/>
+            <circle cx="20" cy="22" r="4" fill="#ff6584" opacity=".5"/>
+          </svg>
+          Upload or load a sample image to begin
+        </div>
+        <canvas id="canvas-2d"></canvas>
+        <canvas id="canvas-webgl"></canvas>
+        <img id="img-b64" alt="Processed image (base64)" draggable="false">
+      </div>
+    </div>
+
+    <!-- Info bar -->
+    <div id="info-bar">
+      <div class="processing-spinner" id="spinner"></div>
+      <div class="info-item">Output: <strong id="inf-method">—</strong></div>
+      <div class="info-item">Size: <strong id="inf-size">—</strong></div>
+      <div class="info-item">Last render: <strong id="inf-time">—</strong></div>
+      <div class="info-item">Commands: <strong id="inf-cmds">0</strong></div>
+      <div style="flex:1"></div>
+      <button class="secondary" id="btn-download" disabled title="Download processed image">⬇ Download</button>
+    </div>
+
+    <!-- Bottom panels: CLI + Benchmark -->
+    <div id="bottom-panel">
+      <div class="panel-card">
+        <h3>
+          CLI Command
+          <button class="secondary" style="padding:3px 10px;font-size:.72rem" id="btn-copy-cli">Copy</button>
+        </h3>
+        <div id="cli-cmd">— load an image and adjust effects —</div>
+      </div>
+      <div class="panel-card">
+        <h3>Benchmark</h3>
+        <div id="bench-controls">
+          <select id="bench-runs" style="width:auto">
+            <option value="5">5 runs</option>
+            <option value="10" selected>10 runs</option>
+            <option value="25">25 runs</option>
+            <option value="50">50 runs</option>
+          </select>
+          <button id="btn-bench" disabled>▶ Run</button>
+          <button class="secondary" id="btn-bench-methods" disabled title="Benchmark all three output methods">All methods</button>
+        </div>
+        <div id="bench-results" style="color:var(--muted);font-size:.78rem">Run a benchmark to see results.</div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+
+</main>
+
+<!-- ═══════════════════════ SCRIPTS ══════════════════════════════ -->
+<script src="wasm_exec.js"></script>
+<script>
+'use strict';
+
+// ─── State ─────────────────────────────────────────────────────────
+const state = {
+  wasmReady: false,
+  sourceImg: null,     // HTMLImageElement or null
+  sourcePix: null,     // ImageData | null  (original pixels at display size)
+  sourceW: 0,
+  sourceH: 0,
+  outputTab: 'canvas2d',
+  processing: false,
+  lastCmds: '',
+  debounceTimer: null,
+};
+
+// ─── DOM refs ──────────────────────────────────────────────────────
+const statusDot  = document.getElementById('status-dot');
+const statusText = document.getElementById('status-text');
+const wasmVer    = document.getElementById('wasm-version');
+const canvas2d   = document.getElementById('canvas-2d');
+const canvasGL   = document.getElementById('canvas-webgl');
+const imgB64     = document.getElementById('img-b64');
+const placeholder = document.getElementById('canvas-placeholder');
+const spinner    = document.getElementById('spinner');
+const infMethod  = document.getElementById('inf-method');
+const infSize    = document.getElementById('inf-size');
+const infTime    = document.getElementById('inf-time');
+const infCmds    = document.getElementById('inf-cmds');
+const cliCmd     = document.getElementById('cli-cmd');
+const benchResults = document.getElementById('bench-results');
+const btnDownload  = document.getElementById('btn-download');
+const btnBench     = document.getElementById('btn-bench');
+const btnBenchAll  = document.getElementById('btn-bench-methods');
+
+// ─── WebGL setup ────────────────────────────────────────────────────
+let gl = null, glTex = null, glProg = null;
+function initWebGL() {
+  const c = canvasGL;
+  gl = c.getContext('webgl') || c.getContext('experimental-webgl');
+  if (!gl) { console.warn('WebGL not supported'); return; }
+
+  const vs = `attribute vec2 a_pos; attribute vec2 a_uv;
+    varying vec2 v_uv;
+    void main() { gl_Position = vec4(a_pos, 0.0, 1.0); v_uv = a_uv; }`;
+  const fs = `precision mediump float;
+    uniform sampler2D u_tex;
+    varying vec2 v_uv;
+    void main() { gl_FragColor = texture2D(u_tex, v_uv); }`;
+
+  function compile(type, src) {
+    const s = gl.createShader(type);
+    gl.shaderSource(s, src);
+    gl.compileShader(s);
+    return s;
+  }
+  glProg = gl.createProgram();
+  gl.attachShader(glProg, compile(gl.VERTEX_SHADER, vs));
+  gl.attachShader(glProg, compile(gl.FRAGMENT_SHADER, fs));
+  gl.linkProgram(glProg);
+  gl.useProgram(glProg);
+
+  const verts = new Float32Array([-1,-1,0,1, 1,-1,1,1, -1,1,0,0, 1,1,1,0]);
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, verts, gl.STATIC_DRAW);
+
+  const aPos = gl.getAttribLocation(glProg, 'a_pos');
+  const aUV  = gl.getAttribLocation(glProg, 'a_uv');
+  gl.enableVertexAttribArray(aPos);
+  gl.enableVertexAttribArray(aUV);
+  gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 16, 0);
+  gl.vertexAttribPointer(aUV,  2, gl.FLOAT, false, 16, 8);
+
+  glTex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, glTex);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+}
+initWebGL();
+
+function renderWebGL(pixels, w, h) {
+  if (!gl) return;
+  canvasGL.width = w;
+  canvasGL.height = h;
+  gl.viewport(0, 0, w, h);
+  gl.bindTexture(gl.TEXTURE_2D, glTex);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+}
+
+// ─── Canvas 2D renderer ─────────────────────────────────────────────
+function renderCanvas2D(pixels, w, h) {
+  canvas2d.width = w;
+  canvas2d.height = h;
+  const ctx = canvas2d.getContext('2d');
+  const id = new ImageData(pixels, w, h);
+  ctx.putImageData(id, 0, 0);
+}
+
+// ─── Render dispatch ───────────────────────────────────────────────
+function showOutput(pixels, w, h, tab) {
+  placeholder.style.display = 'none';
+  canvas2d.classList.remove('active');
+  canvasGL.classList.remove('active');
+  imgB64.classList.remove('active');
+
+  if (tab === 'canvas2d') {
+    renderCanvas2D(pixels, w, h);
+    canvas2d.classList.add('active');
+    infMethod.textContent = 'Canvas 2D';
+  } else if (tab === 'webgl') {
+    renderWebGL(pixels, w, h);
+    canvasGL.classList.add('active');
+    infMethod.textContent = 'WebGL';
+  } else {
+    // base64
+    const tmp = document.createElement('canvas');
+    tmp.width = w; tmp.height = h;
+    const ctx = tmp.getContext('2d');
+    const id = new ImageData(pixels, w, h);
+    ctx.putImageData(id, 0, 0);
+    imgB64.src = tmp.toDataURL('image/png');
+    imgB64.classList.add('active');
+    infMethod.textContent = 'Base64 <img>';
+  }
+  infSize.textContent = `${w} × ${h}`;
+}
+
+// ─── Build command string ──────────────────────────────────────────
+function buildCommands() {
+  const cmds = [];
+
+  // Adjustments
+  const bri = parseFloat(document.getElementById('brightness').value);
+  const con = parseFloat(document.getElementById('contrast').value);
+  const sat = parseFloat(document.getElementById('saturation').value);
+  const hue = parseFloat(document.getElementById('hue').value);
+  const gam = parseFloat(document.getElementById('gamma').value);
+  if (Math.abs(bri) > 0.005)        cmds.push(`brightness ${bri.toFixed(2)}`);
+  if (Math.abs(con - 1) > 0.02)     cmds.push(`contrast ${con.toFixed(2)}`);
+  if (Math.abs(sat - 1) > 0.02)     cmds.push(`saturation ${sat.toFixed(2)}`);
+  if (Math.abs(hue) > 0.5)          cmds.push(`hue ${hue.toFixed(0)}`);
+  if (Math.abs(gam - 1) > 0.02)     cmds.push(`gamma ${gam.toFixed(2)}`);
+
+  // Filters
+  const blur = parseFloat(document.getElementById('blur').value);
+  const sep  = parseFloat(document.getElementById('sepia').value);
+  const vig  = parseFloat(document.getElementById('vignette').value);
+  const emb  = parseFloat(document.getElementById('emboss').value);
+  const ton  = parseFloat(document.getElementById('tonemap').value);
+  if (blur > 0.05)                   cmds.push(`blur ${blur.toFixed(1)}`);
+  if (sep > 0.005)                   cmds.push(`sepia ${sep.toFixed(2)}`);
+  if (vig > 0.005)                   cmds.push(`vignette ${vig.toFixed(2)}`);
+  if (emb > 0.005)                   cmds.push(`emboss ${emb.toFixed(2)}`);
+  if (Math.abs(ton - 1) > 0.02)     cmds.push(`tonemap ${ton.toFixed(2)}`);
+
+  // Boolean effects
+  if (document.getElementById('grayscale').checked)  cmds.push('grayscale');
+  if (document.getElementById('invert').checked)     cmds.push('invert');
+  if (document.getElementById('equalize').checked)   cmds.push('equalize');
+  if (document.getElementById('edge').checked)       cmds.push('edge');
+
+  // Parametric toggle effects
+  if (document.getElementById('pixelate').value > 1)  cmds.push(`pixelate ${document.getElementById('pixelate').value}`);
+  if (document.getElementById('posterize-on').checked) cmds.push(`posterize ${document.getElementById('posterize').value}`);
+  if (document.getElementById('threshold-on').checked) cmds.push(`threshold ${document.getElementById('threshold').value}`);
+  if (document.getElementById('solarize-on').checked)  cmds.push(`solarize ${document.getElementById('solarize').value}`);
+  if (document.getElementById('dither-on').checked)    cmds.push(`dither ${document.getElementById('dither').value}`);
+  if (document.getElementById('denoise-on').checked)   cmds.push(`noise_reduction ${document.getElementById('denoise').value}`);
+
+  // Auto mode
+  const am = document.getElementById('auto-mode').value;
+  if (am) cmds.push(am);
+
+  // Transform
+  const rot  = parseFloat(document.getElementById('rotate').value);
+  const skx  = parseFloat(document.getElementById('skew-x').value);
+  const sky  = parseFloat(document.getElementById('skew-y').value);
+  if (Math.abs(rot) > 0.5)          cmds.push(`rotate ${rot}`);
+  if (Math.abs(skx) > 0.005 || Math.abs(sky) > 0.005)
+    cmds.push(`skew ${skx.toFixed(2)} ${sky.toFixed(2)}`);
+
+  return cmds;
+}
+
+// ─── Process image ─────────────────────────────────────────────────
+function processImage(measure) {
+  if (!state.wasmReady || !state.sourcePix) return null;
+  const cmds = buildCommands();
+  const cmdStr = cmds.join('; ');
+  state.lastCmds = cmdStr;
+  infCmds.textContent = cmds.length;
+  cliCmd.textContent = cmdStr
+    ? `vango-cli -in input.jpg -out output.jpg \\\n  -cmds "${cmdStr}"`
+    : '(no effects applied — original image)';
+  updateSliderColors();
+
+  if (!state.sourcePix) return null;
+
+  const { data, width, height } = state.sourcePix;
+  const arr = new Uint8Array(data.buffer);
+
+  const t0 = performance.now();
+  const result = window.vango.processImage(arr, width, height, cmdStr);
+  const dur = performance.now() - t0;
+
+  if (result.error) {
+    console.error('vango.processImage error:', result.error);
+    return null;
+  }
+  if (!measure) {
+    infTime.textContent = `${dur.toFixed(1)} ms`;
+    showOutput(result.pixels, result.width, result.height, state.outputTab);
+    btnDownload.disabled = false;
+  }
+  return { dur, w: result.width, h: result.height };
+}
+
+// ─── Debounced refresh ─────────────────────────────────────────────
+function scheduleProcess() {
+  clearTimeout(state.debounceTimer);
+  spinner.classList.add('visible');
+  state.debounceTimer = setTimeout(() => {
+    processImage(false);
+    spinner.classList.remove('visible');
+  }, 80);
+}
+
+// ─── Load image from file / URL ────────────────────────────────────
+function loadImageData(src) {
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.onload = () => {
+      // Cap at 900px wide/tall for performance in the demo
+      const MAX_DEMO_DIM = 900; // cap dimensions for demo performance
+  let w = img.naturalWidth, h = img.naturalHeight;
+  if (w > MAX_DEMO_DIM) { h = Math.round(h * MAX_DEMO_DIM / w); w = MAX_DEMO_DIM; }
+  if (h > MAX_DEMO_DIM) { w = Math.round(w * MAX_DEMO_DIM / h); h = MAX_DEMO_DIM; }
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      const ctx = c.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      state.sourcePix = ctx.getImageData(0, 0, w, h);
+      state.sourceW = w;
+      state.sourceH = h;
+      placeholder.style.display = 'none';
+      btnBench.disabled = false;
+      btnBenchAll.disabled = false;
+      res();
+    };
+    img.onerror = rej;
+    img.src = src;
+  });
+}
+
+// ─── File input ────────────────────────────────────────────────────
+const fileInput = document.getElementById('file-input');
+const dropZone  = document.getElementById('drop-zone');
+
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') fileInput.click(); });
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) handleFile(file);
+});
+fileInput.addEventListener('change', () => {
+  if (fileInput.files[0]) handleFile(fileInput.files[0]);
+});
+
+function handleFile(file) {
+  const url = URL.createObjectURL(file);
+  loadImageData(url).then(scheduleProcess).catch(console.error);
+}
+
+// ─── Sample image ──────────────────────────────────────────────────
+document.getElementById('btn-sample').addEventListener('click', () => {
+  // Generate a colorful test image on a canvas
+  const w = 640, h = 480;
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const ctx = c.getContext('2d');
+
+  // background gradient
+  const grad = ctx.createLinearGradient(0, 0, w, h);
+  grad.addColorStop(0,    '#1a1a2e');
+  grad.addColorStop(0.4,  '#16213e');
+  grad.addColorStop(0.8,  '#0f3460');
+  grad.addColorStop(1,    '#533483');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, w, h);
+
+  // Color circles
+  const circles = [
+    [160, 200, 120, '#e94560'],
+    [320, 240, 100, '#f5a623'],
+    [480, 200, 110, '#7ed321'],
+    [240, 340, 90,  '#4a90e2'],
+    [400, 340, 95,  '#bd10e0'],
+  ];
+  for (const [cx, cy, r, col] of circles) {
+    const g2 = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+    g2.addColorStop(0, col + 'cc');
+    g2.addColorStop(1, col + '11');
+    ctx.fillStyle = g2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI*2);
+    ctx.fill();
+  }
+  // Bright highlights
+  for (let i = 0; i < 40; i++) {
+    ctx.fillStyle = `rgba(255,255,255,${Math.random()*.6+.1})`;
+    ctx.beginPath();
+    ctx.arc(Math.random()*w, Math.random()*h, Math.random()*3+1, 0, Math.PI*2);
+    ctx.fill();
+  }
+  // Text watermark
+  ctx.font = 'bold 48px sans-serif';
+  ctx.fillStyle = 'rgba(255,255,255,0.12)';
+  ctx.textAlign = 'center';
+  ctx.fillText('Vango Demo', w/2, h/2 + 16);
+
+  state.sourcePix = ctx.getImageData(0, 0, w, h);
+  state.sourceW = w;
+  state.sourceH = h;
+  placeholder.style.display = 'none';
+  btnBench.disabled = false;
+  btnBenchAll.disabled = false;
+  scheduleProcess();
+});
+
+// ─── Reset all controls ────────────────────────────────────────────
+document.getElementById('btn-reset').addEventListener('click', () => {
+  const defaults = {
+    brightness: 0, contrast: 1, saturation: 1, hue: 0, gamma: 1,
+    blur: 0, sepia: 0, vignette: 0, emboss: 0, tonemap: 1,
+    pixelate: 1, posterize: 4, threshold: 128, solarize: 128, dither: 4, denoise: 1,
+    rotate: 0, 'skew-x': 0, 'skew-y': 0,
+  };
+  for (const [id, val] of Object.entries(defaults)) {
+    const el = document.getElementById(id);
+    if (el) el.value = val;
+  }
+  for (const id of ['grayscale','invert','equalize','edge','posterize-on','threshold-on','solarize-on','dither-on','denoise-on']) {
+    const el = document.getElementById(id);
+    if (el) el.checked = false;
+  }
+  document.getElementById('auto-mode').value = '';
+  ['posterize-ctrl','threshold-ctrl','solarize-ctrl','dither-ctrl','denoise-ctrl'].forEach(id => {
+    document.getElementById(id).style.display = 'none';
+  });
+  updateAllLabels();
+  scheduleProcess();
+});
+
+// ─── Tabs ──────────────────────────────────────────────────────────
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    state.outputTab = tab.dataset.tab;
+    scheduleProcess();
+  });
+});
+
+// ─── Section collapse ──────────────────────────────────────────────
+document.querySelectorAll('.section-header').forEach(hdr => {
+  hdr.addEventListener('click', () => {
+    const body = hdr.nextElementSibling;
+    if (!body) return;
+    hdr.classList.toggle('collapsed');
+    body.classList.toggle('hidden');
+  });
+});
+
+// ─── Slider label updates ──────────────────────────────────────────
+function fmt(v, decimals) { return parseFloat(v).toFixed(decimals); }
+
+function updateAllLabels() {
+  const map = {
+    brightness: [2], contrast: [2], saturation: [2], hue: [0],
+    gamma: [2], blur: [1], sepia: [2], vignette: [2], emboss: [2],
+    tonemap: [2], pixelate: [0], posterize: [0], threshold: [0],
+    solarize: [0], dither: [0], denoise: [0], rotate: [0],
+    'skew-x': [2], 'skew-y': [2],
+  };
+  for (const [id, [dec]] of Object.entries(map)) {
+    const el = document.getElementById(id);
+    const lbl = document.getElementById('lbl-' + id);
+    if (el && lbl) lbl.textContent = fmt(el.value, dec);
+  }
+}
+
+function updateSliderColors() {
+  document.querySelectorAll('input[type=range]').forEach(s => {
+    const min = parseFloat(s.min), max = parseFloat(s.max), val = parseFloat(s.value);
+    const pct = ((val - min) / (max - min) * 100).toFixed(1) + '%';
+    s.style.setProperty('--pct', pct);
+  });
+}
+
+// Wire all sliders & selects to scheduleProcess
+document.querySelectorAll('input[type=range], select, input[type=checkbox]').forEach(el => {
+  const labelId = 'lbl-' + el.id;
+  const lbl = document.getElementById(labelId);
+  const update = () => {
+    if (lbl) {
+      // find decimals from map
+      const decMap = {
+        brightness:2, contrast:2, saturation:2, hue:0, gamma:2,
+        blur:1, sepia:2, vignette:2, emboss:2, tonemap:2,
+        pixelate:0, posterize:0, threshold:0, solarize:0, dither:0, denoise:0,
+        rotate:0, 'skew-x':2, 'skew-y':2,
+      };
+      lbl.textContent = fmt(el.value, decMap[el.id] ?? 2);
+    }
+    scheduleProcess();
+  };
+  el.addEventListener('input', update);
+  el.addEventListener('change', update);
+});
+
+// Toggle sub-controls
+['posterize','threshold','solarize','dither','denoise'].forEach(name => {
+  document.getElementById(name + '-on').addEventListener('change', function() {
+    document.getElementById(name + '-ctrl').style.display = this.checked ? '' : 'none';
+    scheduleProcess();
+  });
+});
+
+// ─── Copy CLI ──────────────────────────────────────────────────────
+document.getElementById('btn-copy-cli').addEventListener('click', () => {
+  navigator.clipboard.writeText(cliCmd.textContent).then(() => {
+    const btn = document.getElementById('btn-copy-cli');
+    btn.textContent = '✓ Copied';
+    setTimeout(() => btn.textContent = 'Copy', 1800);
+  });
+});
+
+// ─── Download ──────────────────────────────────────────────────────
+btnDownload.addEventListener('click', () => {
+  if (!state.sourcePix) return;
+  const cmds = buildCommands();
+  const cmdStr = cmds.join('; ');
+  const { data, width, height } = state.sourcePix;
+  const arr = new Uint8Array(data.buffer);
+  const res = window.vango.processImagePNG(arr, width, height, cmdStr);
+  if (res.dataURL) {
+    const a = document.createElement('a');
+    a.href = res.dataURL;
+    a.download = 'vango-output.png';
+    a.click();
+  }
+});
+
+// ─── Benchmark ─────────────────────────────────────────────────────
+btnBench.addEventListener('click', async () => {
+  if (!state.wasmReady || !state.sourcePix) return;
+  const n = parseInt(document.getElementById('bench-runs').value, 10);
+  btnBench.disabled = true;
+  benchResults.textContent = 'Running…';
+
+  await new Promise(r => setTimeout(r, 10));
+
+  const { data, width, height } = state.sourcePix;
+  const arr = new Uint8Array(data.buffer);
+  const cmdStr = buildCommands().join('; ');
+  const times = [];
+  for (let i = 0; i < n; i++) {
+    const t0 = performance.now();
+    window.vango.processImage(arr, width, height, cmdStr);
+    times.push(performance.now() - t0);
+    if (i % 5 === 4) await new Promise(r => setTimeout(r, 0)); // yield UI
+  }
+
+  const avg  = times.reduce((a, b) => a + b, 0) / n;
+  const minT = Math.min(...times);
+  const maxT = Math.max(...times);
+  const fps  = avg > 0 ? (1000 / avg).toFixed(1) : '∞';
+
+  benchResults.innerHTML = `
+    <table>
+      <tr><th>Runs</th><th>Avg</th><th>Min</th><th>Max</th><th>~FPS</th></tr>
+      <tr>
+        <td>${n}</td>
+        <td><strong>${avg.toFixed(1)} ms</strong></td>
+        <td>${minT.toFixed(1)} ms</td>
+        <td>${maxT.toFixed(1)} ms</td>
+        <td>${fps}</td>
+      </tr>
+    </table>
+    <div style="margin-top:5px;color:var(--muted)">Image: ${width}×${height} · Commands: ${cmdStr || '(none)'}</div>`;
+  btnBench.disabled = false;
+});
+
+// ─── Benchmark all output methods ─────────────────────────────────
+btnBenchAll.addEventListener('click', async () => {
+  if (!state.wasmReady || !state.sourcePix) return;
+  const n = parseInt(document.getElementById('bench-runs').value, 10);
+  btnBenchAll.disabled = true;
+  benchResults.textContent = 'Benchmarking all methods…';
+  await new Promise(r => setTimeout(r, 10));
+
+  const { data, width, height } = state.sourcePix;
+  const arr = new Uint8Array(data.buffer);
+  const cmdStr = buildCommands().join('; ');
+
+  async function benchMethod(label, fn) {
+    const times = [];
+    for (let i = 0; i < n; i++) {
+      const t0 = performance.now();
+      fn();
+      times.push(performance.now() - t0);
+      if (i % 5 === 4) await new Promise(r => setTimeout(r, 0));
+    }
+    return { label, avg: times.reduce((a,b) => a+b, 0)/n, min: Math.min(...times), max: Math.max(...times) };
+  }
+
+  // Get pixel result once to use for render benchmarks
+  const pxResult = window.vango.processImage(arr, width, height, cmdStr);
+
+  const rows = await Promise.all([
+    benchMethod('WASM processImage (pixels)', () => window.vango.processImage(arr, width, height, cmdStr)),
+    benchMethod('Canvas 2D putImageData', () => {
+      canvas2d.width = pxResult.width; canvas2d.height = pxResult.height;
+      canvas2d.getContext('2d').putImageData(new ImageData(pxResult.pixels, pxResult.width, pxResult.height), 0, 0);
+    }),
+    benchMethod('WebGL texImage2D', () => { if (gl) renderWebGL(pxResult.pixels, pxResult.width, pxResult.height); }),
+    benchMethod('Base64 PNG encode (WASM)', () => window.vango.processImagePNG(arr, width, height, cmdStr)),
+  ]);
+
+  let html = '<table><tr><th>Method</th><th>Avg</th><th>Min</th><th>Max</th><th>~FPS</th></tr>';
+  for (const r of rows) {
+    const fps = r.avg > 0 ? (1000/r.avg).toFixed(1) : '∞';
+    html += `<tr><td>${r.label}</td><td><strong>${r.avg.toFixed(1)} ms</strong></td><td>${r.min.toFixed(1)}</td><td>${r.max.toFixed(1)}</td><td>${fps}</td></tr>`;
+  }
+  html += `</table><div style="margin-top:5px;color:var(--muted)">Each method: ${n} runs · ${width}×${height}</div>`;
+  benchResults.innerHTML = html;
+  btnBenchAll.disabled = false;
+});
+
+// ─── Sidebar drop-zone passthrough ────────────────────────────────
+// (already wired above via #drop-zone)
+
+// ─── WASM boot ─────────────────────────────────────────────────────
+async function bootWasm() {
+  statusText.textContent = 'Loading WASM…';
+  try {
+    const go = new Go();
+    const result = await WebAssembly.instantiateStreaming(fetch('vango.wasm'), go.importObject);
+    go.run(result.instance);
+
+    // Poll until vango.ready is set (Go calls registerVangoAPI synchronously before select{})
+    await new Promise((res, rej) => {
+      let attempts = 0;
+      const iv = setInterval(() => {
+        attempts++;
+        if (window.vango && window.vango.ready) { clearInterval(iv); res(); }
+        if (attempts > 200) { clearInterval(iv); rej(new Error('vango not ready')); }
+      }, 50);
+    });
+
+    state.wasmReady = true;
+    statusDot.classList.add('ready');
+    statusText.textContent = 'Ready';
+    wasmVer.textContent = `v${window.vango.version}`;
+    updateAllLabels();
+    updateSliderColors();
+
+    // If image is already loaded (race), process it
+    if (state.sourcePix) scheduleProcess();
+  } catch (err) {
+    statusDot.classList.add('error');
+    statusText.textContent = 'Error: ' + err.message;
+    console.error(err);
+  }
+}
+
+bootWasm();
+</script>
+</body>
+</html>
