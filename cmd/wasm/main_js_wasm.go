@@ -227,14 +227,16 @@ func applyCommand(p *vango.Pipeline, raw string) *vango.Pipeline {
 		p = p.Equalize()
 		n := vango.ToNRGBA(p.Image())
 		p = vango.From(n).Brightness(autoBrightnessDelta(n))
-		p = vango.From(p.Image()).Saturation(autoVibranceFactor(p.Image()))
+		brightened := p.Image()
+		p = vango.From(brightened).Saturation(autoVibranceFactor(brightened))
 	case "autofull", "auto_full":
 		p = p.WhiteBalance(image.Rectangle{})
 		p = p.NoiseReduction(1)
 		p = p.Equalize()
 		n := vango.ToNRGBA(p.Image())
 		p = vango.From(n).Brightness(autoBrightnessDelta(n))
-		p = vango.From(p.Image()).Saturation(autoVibranceFactor(p.Image()))
+		brightened := p.Image()
+		p = vango.From(brightened).Saturation(autoVibranceFactor(brightened))
 	case "noisereduction", "noise_reduction", "denoise":
 		radius := 1
 		if len(args) >= 1 {

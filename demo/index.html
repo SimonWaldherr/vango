@@ -379,7 +379,7 @@ canvas.active { display: block; }
         <div id="drop-zone" role="button" tabindex="0" title="Drop an image or click to choose">
           <input type="file" id="file-input" accept="image/*">
           <div>📂 Drop image here or <strong style="color:var(--accent)">click to upload</strong></div>
-          <div class="upload-hint">JPEG · PNG · GIF · BMP · TIFF  (max ~4 MB recommended)</div>
+          <div class="upload-hint">JPEG · PNG · GIF · BMP · TIFF  (images wider than 900 px are downscaled for performance)</div>
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;">
           <button id="btn-sample" style="flex:1">Load Sample</button>
@@ -846,11 +846,11 @@ function loadImageData(src) {
   return new Promise((res, rej) => {
     const img = new Image();
     img.onload = () => {
-      // Cap at 800px wide for perf in demo
-      let w = img.naturalWidth, h = img.naturalHeight;
-      const MAX = 900;
-      if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
-      if (h > MAX) { w = Math.round(w * MAX / h); h = MAX; }
+      // Cap at 900px wide/tall for performance in the demo
+      const MAX_DEMO_DIM = 900; // cap dimensions for demo performance
+  let w = img.naturalWidth, h = img.naturalHeight;
+  if (w > MAX_DEMO_DIM) { h = Math.round(h * MAX_DEMO_DIM / w); w = MAX_DEMO_DIM; }
+  if (h > MAX_DEMO_DIM) { w = Math.round(w * MAX_DEMO_DIM / h); h = MAX_DEMO_DIM; }
       const c = document.createElement('canvas');
       c.width = w; c.height = h;
       const ctx = c.getContext('2d');
@@ -893,7 +893,7 @@ function handleFile(file) {
 
 // ─── Sample image ──────────────────────────────────────────────────
 document.getElementById('btn-sample').addEventListener('click', () => {
-  // Generate a colourful test image on a canvas
+  // Generate a colorful test image on a canvas
   const w = 640, h = 480;
   const c = document.createElement('canvas');
   c.width = w; c.height = h;
@@ -908,7 +908,7 @@ document.getElementById('btn-sample').addEventListener('click', () => {
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, w, h);
 
-  // Colour circles
+  // Color circles
   const circles = [
     [160, 200, 120, '#e94560'],
     [320, 240, 100, '#f5a623'],
