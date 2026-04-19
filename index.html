@@ -497,6 +497,150 @@ canvas.active { display: block; }
       </div>
     </div>
 
+    <!-- Sharpening -->
+    <div class="section">
+      <div class="section-header collapsed">Sharpening</div>
+      <div class="section-body hidden" id="sec-sharpening">
+        <div class="ctrl" data-cmd="sharpen" data-default="0">
+          <label>Sharpen <span class="val" id="lbl-sharpen">0.00</span></label>
+          <input type="range" id="sharpen" min="0" max="3" step="0.05" value="0">
+        </div>
+        <div class="ctrl" data-cmd="clarity" data-default="0">
+          <label>Clarity <span class="val" id="lbl-clarity">0.00</span></label>
+          <input type="range" id="clarity" min="0" max="1" step="0.01" value="0">
+        </div>
+      </div>
+    </div>
+
+    <!-- Distortion -->
+    <div class="section">
+      <div class="section-header collapsed">Distortion</div>
+      <div class="section-body hidden" id="sec-distortion">
+        <div class="ctrl" data-cmd="twirl" data-default="0">
+          <label>Twirl (angle) <span class="val" id="lbl-twirl">0.00</span></label>
+          <input type="range" id="twirl" min="-6.28" max="6.28" step="0.1" value="0">
+        </div>
+        <div class="ctrl" data-cmd="spherize" data-default="0">
+          <label>Spherize <span class="val" id="lbl-spherize">0.00</span></label>
+          <input type="range" id="spherize" min="-2" max="2" step="0.05" value="0">
+        </div>
+        <div class="ctrl" data-cmd="wave-amp" data-default="0">
+          <label>Wave Amplitude <span class="val" id="lbl-wave-amp">0</span></label>
+          <input type="range" id="wave-amp" min="0" max="30" step="1" value="0">
+        </div>
+        <div class="ctrl" data-cmd="wave-wl" data-default="60">
+          <label>Wave Length <span class="val" id="lbl-wave-wl">60</span></label>
+          <input type="range" id="wave-wl" min="10" max="200" step="5" value="60">
+        </div>
+        <div class="ctrl" data-cmd="ripple-amp" data-default="0">
+          <label>Ripple Amp <span class="val" id="lbl-ripple-amp">0</span></label>
+          <input type="range" id="ripple-amp" min="0" max="20" step="0.5" value="0">
+        </div>
+        <div class="ctrl" data-cmd="ripple-wl" data-default="30">
+          <label>Ripple Length <span class="val" id="lbl-ripple-wl">30</span></label>
+          <input type="range" id="ripple-wl" min="5" max="100" step="1" value="30">
+        </div>
+        <div class="ctrl" data-cmd="pinch" data-default="1">
+          <label>Pinch <span class="val" id="lbl-pinch">1.00</span></label>
+          <input type="range" id="pinch" min="0.2" max="4" step="0.05" value="1">
+        </div>
+        <label class="ctrl-check"><input type="checkbox" id="polar-on"> Polar Coordinates</label>
+      </div>
+    </div>
+
+    <!-- Retouching -->
+    <div class="section">
+      <div class="section-header collapsed">Retouching</div>
+      <div class="section-body hidden" id="sec-retouch">
+        <div class="ctrl" data-cmd="dodge" data-default="0">
+          <label>Dodge <span class="val" id="lbl-dodge">0.00</span></label>
+          <input type="range" id="dodge" min="0" max="1" step="0.01" value="0">
+        </div>
+        <div class="ctrl">
+          <label>Dodge Range</label>
+          <select id="dodge-range">
+            <option value="midtones" selected>Midtones</option>
+            <option value="shadows">Shadows</option>
+            <option value="highlights">Highlights</option>
+          </select>
+        </div>
+        <div class="ctrl" data-cmd="burn" data-default="0">
+          <label>Burn <span class="val" id="lbl-burn">0.00</span></label>
+          <input type="range" id="burn" min="0" max="1" step="0.01" value="0">
+        </div>
+        <div class="ctrl">
+          <label>Burn Range</label>
+          <select id="burn-range">
+            <option value="midtones" selected>Midtones</option>
+            <option value="shadows">Shadows</option>
+            <option value="highlights">Highlights</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pro Adjustments -->
+    <div class="section">
+      <div class="section-header collapsed">Pro Adjustments</div>
+      <div class="section-body hidden" id="sec-pro">
+        <div class="ctrl" data-cmd="vibrance" data-default="0">
+          <label>Vibrance <span class="val" id="lbl-vibrance">0.00</span></label>
+          <input type="range" id="vibrance" min="-1" max="2" step="0.05" value="0">
+        </div>
+        <div class="ctrl" data-cmd="dehaze" data-default="0">
+          <label>Dehaze <span class="val" id="lbl-dehaze">0.00</span></label>
+          <input type="range" id="dehaze" min="0" max="1" step="0.01" value="0">
+        </div>
+        <div class="ctrl" data-cmd="shadow-recovery" data-default="0">
+          <label>Shadow Recovery <span class="val" id="lbl-shadow-recovery">0.00</span></label>
+          <input type="range" id="shadow-recovery" min="0" max="1" step="0.01" value="0">
+        </div>
+        <div class="ctrl" data-cmd="highlight-recovery" data-default="0">
+          <label>Highlight Recovery <span class="val" id="lbl-highlight-recovery">0.00</span></label>
+          <input type="range" id="highlight-recovery" min="0" max="1" step="0.01" value="0">
+        </div>
+        <div class="ctrl" data-cmd="color-temp" data-default="0">
+          <label>Color Temperature <span class="val" id="lbl-color-temp">0</span></label>
+          <input type="range" id="color-temp" min="-100" max="100" step="1" value="0">
+        </div>
+      </div>
+    </div>
+
+    <!-- Advanced Effects -->
+    <div class="section">
+      <div class="section-header collapsed">Advanced Effects</div>
+      <div class="section-body hidden" id="sec-advanced">
+        <div class="ctrl" data-cmd="glow-sigma" data-default="0">
+          <label>Glow <span class="val" id="lbl-glow-sigma">0.0</span></label>
+          <input type="range" id="glow-sigma" min="0" max="10" step="0.5" value="0">
+        </div>
+        <div class="ctrl" data-cmd="halftone" data-default="0">
+          <label>Halftone (dot) <span class="val" id="lbl-halftone">0</span></label>
+          <input type="range" id="halftone" min="0" max="16" step="1" value="0">
+        </div>
+        <div class="ctrl" data-cmd="oil-radius" data-default="0">
+          <label>Oil Painting <span class="val" id="lbl-oil-radius">0</span></label>
+          <input type="range" id="oil-radius" min="0" max="8" step="1" value="0">
+        </div>
+        <div class="ctrl" data-cmd="chromatic" data-default="0">
+          <label>Chromatic Aberration <span class="val" id="lbl-chromatic">0.0</span></label>
+          <input type="range" id="chromatic" min="0" max="15" step="0.5" value="0">
+        </div>
+        <div class="ctrl" data-cmd="noise" data-default="0">
+          <label>Add Noise <span class="val" id="lbl-noise">0.00</span></label>
+          <input type="range" id="noise" min="0" max="0.5" step="0.01" value="0">
+        </div>
+        <div class="ctrl" data-cmd="motion-angle" data-default="0">
+          <label>Motion Blur Angle <span class="val" id="lbl-motion-angle">0</span></label>
+          <input type="range" id="motion-angle" min="0" max="360" step="5" value="0">
+        </div>
+        <div class="ctrl" data-cmd="motion-dist" data-default="0">
+          <label>Motion Blur Distance <span class="val" id="lbl-motion-dist">0</span></label>
+          <input type="range" id="motion-dist" min="0" max="30" step="1" value="0">
+        </div>
+      </div>
+    </div>
+
     <!-- Auto Modes -->
     <div class="section">
       <div class="section-header">Auto Enhance</div>
@@ -531,6 +675,10 @@ canvas.active { display: block; }
         <div class="ctrl" data-cmd="skew-y" data-default="0">
           <label>Skew Y <span class="val" id="lbl-skew-y">0.00</span></label>
           <input type="range" id="skew-y" min="-0.5" max="0.5" step="0.01" value="0">
+        </div>
+        <div style="display:flex;gap:6px;margin-top:4px">
+          <label class="ctrl-check"><input type="checkbox" id="flip-x"> Flip X</label>
+          <label class="ctrl-check"><input type="checkbox" id="flip-y"> Flip Y</label>
         </div>
       </div>
     </div>
@@ -794,6 +942,61 @@ function buildCommands() {
   if (Math.abs(rot) > 0.5)          cmds.push(`rotate ${rot}`);
   if (Math.abs(skx) > 0.005 || Math.abs(sky) > 0.005)
     cmds.push(`skew ${skx.toFixed(2)} ${sky.toFixed(2)}`);
+  if (document.getElementById('flip-x').checked) cmds.push('flip_x');
+  if (document.getElementById('flip-y').checked) cmds.push('flip_y');
+
+  // Sharpening
+  const shp = parseFloat(document.getElementById('sharpen').value);
+  const clr = parseFloat(document.getElementById('clarity').value);
+  if (shp > 0.02)                   cmds.push(`sharpen ${shp.toFixed(2)}`);
+  if (clr > 0.005)                  cmds.push(`clarity ${clr.toFixed(2)}`);
+
+  // Distortion
+  const twl = parseFloat(document.getElementById('twirl').value);
+  const sph = parseFloat(document.getElementById('spherize').value);
+  const wAmp = parseFloat(document.getElementById('wave-amp').value);
+  const wWl = parseFloat(document.getElementById('wave-wl').value);
+  const rAmp = parseFloat(document.getElementById('ripple-amp').value);
+  const rWl = parseFloat(document.getElementById('ripple-wl').value);
+  const pnch = parseFloat(document.getElementById('pinch').value);
+  if (Math.abs(twl) > 0.05)         cmds.push(`twirl ${twl.toFixed(2)}`);
+  if (Math.abs(sph) > 0.02)         cmds.push(`spherize ${sph.toFixed(2)}`);
+  if (wAmp > 0.5)                   cmds.push(`wave ${wAmp} ${wAmp} ${wWl} ${wWl}`);
+  if (rAmp > 0.2)                   cmds.push(`ripple ${rAmp} ${rWl}`);
+  if (Math.abs(pnch - 1) > 0.03)    cmds.push(`pinch ${pnch.toFixed(2)}`);
+  if (document.getElementById('polar-on').checked) cmds.push('polar_coordinates');
+
+  // Retouching
+  const ddg = parseFloat(document.getElementById('dodge').value);
+  const brn = parseFloat(document.getElementById('burn').value);
+  if (ddg > 0.005) cmds.push(`dodge ${ddg.toFixed(2)} ${document.getElementById('dodge-range').value}`);
+  if (brn > 0.005) cmds.push(`burn ${brn.toFixed(2)} ${document.getElementById('burn-range').value}`);
+
+  // Pro Adjustments
+  const vib = parseFloat(document.getElementById('vibrance').value);
+  const dhz = parseFloat(document.getElementById('dehaze').value);
+  const shr = parseFloat(document.getElementById('shadow-recovery').value);
+  const hlr = parseFloat(document.getElementById('highlight-recovery').value);
+  const ctp = parseFloat(document.getElementById('color-temp').value);
+  if (Math.abs(vib) > 0.02)         cmds.push(`vibrance ${vib.toFixed(2)}`);
+  if (dhz > 0.005)                  cmds.push(`dehaze ${dhz.toFixed(2)}`);
+  if (shr > 0.005 || hlr > 0.005)   cmds.push(`shadow_highlight ${shr.toFixed(2)} ${hlr.toFixed(2)}`);
+  if (Math.abs(ctp) > 0.5)          cmds.push(`color_temperature ${ctp}`);
+
+  // Advanced Effects
+  const glw = parseFloat(document.getElementById('glow-sigma').value);
+  const hft = parseInt(document.getElementById('halftone').value, 10);
+  const oil = parseInt(document.getElementById('oil-radius').value, 10);
+  const chr = parseFloat(document.getElementById('chromatic').value);
+  const noi = parseFloat(document.getElementById('noise').value);
+  const mAng = parseFloat(document.getElementById('motion-angle').value);
+  const mDist = parseInt(document.getElementById('motion-dist').value, 10);
+  if (glw > 0.2)                    cmds.push(`glow ${glw.toFixed(1)} 0.5`);
+  if (hft > 0)                      cmds.push(`halftone ${hft}`);
+  if (oil > 0)                      cmds.push(`oil_painting ${oil}`);
+  if (chr > 0.2)                    cmds.push(`chromatic_aberration ${chr.toFixed(1)}`);
+  if (noi > 0.005)                  cmds.push(`add_noise ${noi.toFixed(2)}`);
+  if (mDist > 0)                    cmds.push(`motion_blur ${mAng} ${mDist}`);
 
   return cmds;
 }
@@ -954,16 +1157,24 @@ document.getElementById('btn-reset').addEventListener('click', () => {
     blur: 0, sepia: 0, vignette: 0, emboss: 0, tonemap: 1,
     pixelate: 1, posterize: 4, threshold: 128, solarize: 128, dither: 4, denoise: 1,
     rotate: 0, 'skew-x': 0, 'skew-y': 0,
+    sharpen: 0, clarity: 0,
+    twirl: 0, spherize: 0, 'wave-amp': 0, 'wave-wl': 60, 'ripple-amp': 0, 'ripple-wl': 30, pinch: 1,
+    dodge: 0, burn: 0,
+    vibrance: 0, dehaze: 0, 'shadow-recovery': 0, 'highlight-recovery': 0, 'color-temp': 0,
+    'glow-sigma': 0, halftone: 0, 'oil-radius': 0, chromatic: 0, noise: 0,
+    'motion-angle': 0, 'motion-dist': 0,
   };
   for (const [id, val] of Object.entries(defaults)) {
     const el = document.getElementById(id);
     if (el) el.value = val;
   }
-  for (const id of ['grayscale','invert','equalize','edge','posterize-on','threshold-on','solarize-on','dither-on','denoise-on']) {
+  for (const id of ['grayscale','invert','equalize','edge','posterize-on','threshold-on','solarize-on','dither-on','denoise-on','flip-x','flip-y','polar-on']) {
     const el = document.getElementById(id);
     if (el) el.checked = false;
   }
   document.getElementById('auto-mode').value = '';
+  document.getElementById('dodge-range').value = 'midtones';
+  document.getElementById('burn-range').value = 'midtones';
   ['posterize-ctrl','threshold-ctrl','solarize-ctrl','dither-ctrl','denoise-ctrl'].forEach(id => {
     document.getElementById(id).style.display = 'none';
   });
@@ -1001,6 +1212,13 @@ function updateAllLabels() {
     tonemap: [2], pixelate: [0], posterize: [0], threshold: [0],
     solarize: [0], dither: [0], denoise: [0], rotate: [0],
     'skew-x': [2], 'skew-y': [2],
+    sharpen: [2], clarity: [2],
+    twirl: [2], spherize: [2], 'wave-amp': [0], 'wave-wl': [0],
+    'ripple-amp': [1], 'ripple-wl': [0], pinch: [2],
+    dodge: [2], burn: [2],
+    vibrance: [2], dehaze: [2], 'shadow-recovery': [2], 'highlight-recovery': [2], 'color-temp': [0],
+    'glow-sigma': [1], halftone: [0], 'oil-radius': [0], chromatic: [1], noise: [2],
+    'motion-angle': [0], 'motion-dist': [0],
   };
   for (const [id, [dec]] of Object.entries(map)) {
     const el = document.getElementById(id);
@@ -1029,6 +1247,13 @@ document.querySelectorAll('input[type=range], select, input[type=checkbox]').for
         blur:1, sepia:2, vignette:2, emboss:2, tonemap:2,
         pixelate:0, posterize:0, threshold:0, solarize:0, dither:0, denoise:0,
         rotate:0, 'skew-x':2, 'skew-y':2,
+        sharpen:2, clarity:2,
+        twirl:2, spherize:2, 'wave-amp':0, 'wave-wl':0,
+        'ripple-amp':1, 'ripple-wl':0, pinch:2,
+        dodge:2, burn:2,
+        vibrance:2, dehaze:2, 'shadow-recovery':2, 'highlight-recovery':2, 'color-temp':0,
+        'glow-sigma':1, halftone:0, 'oil-radius':0, chromatic:1, noise:2,
+        'motion-angle':0, 'motion-dist':0,
       };
       lbl.textContent = fmt(el.value, decMap[el.id] ?? 2);
     }
