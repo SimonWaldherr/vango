@@ -699,7 +699,21 @@ func main() {
 	outPath := flag.String("out", "out.png", "output image path")
 	cmds := flag.String("cmds", "", "comma-separated commands, e.g. \"blur 1.2; contrast 1.1; sepia 0.2\"")
 	projectOut := flag.String("project-out", "", "save the result as a vango project file (.vango) instead of a flat image")
+
+	// Track whether -out was explicitly supplied before parsing.
+	outExplicit := false
+	flag.Visit(func(f *flag.Flag) {
+		if f.Name == "out" {
+			outExplicit = true
+		}
+	})
 	flag.Parse()
+	// Re-check after Parse (flag.Visit only sees flags set after Parse).
+	flag.Visit(func(f *flag.Flag) {
+		if f.Name == "out" {
+			outExplicit = true
+		}
+	})
 
 	if *inPath == "" {
 		fmt.Fprintln(os.Stderr, "missing -in file")
@@ -708,7 +722,6 @@ func main() {
 	}
 
 	// Load image – support both flat images and .vango project files.
-	var img interface{ Bounds() image.Rectangle }
 	var baseImg image.Image
 
 	if strings.HasSuffix(strings.ToLower(*inPath), ".vango") {
@@ -726,7 +739,6 @@ func main() {
 			panic(err)
 		}
 		baseImg = canvas.FlattenAll()
-		img = baseImg
 	} else {
 		f, err := os.Open(*inPath)
 		if err != nil {
@@ -742,9 +754,7 @@ func main() {
 			panic(err)
 		}
 		baseImg = decoded
-		img = baseImg
 	}
-	_ = img
 
 	p := vango.From(baseImg)
 
@@ -772,11 +782,12 @@ func main() {
 			panic(err)
 		}
 		fmt.Println("Saved project", *projectOut)
-		if *outPath == "out.png" {
+		if !outExplicit {
 			// No explicit -out flag given; skip flat image save.
 			return
 		}
 	}
+
 
 	// Save flat output based on extension
 	outFile, err := os.Create(*outPath)
