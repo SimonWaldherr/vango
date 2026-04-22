@@ -122,6 +122,40 @@ func autoVibranceFactor(n *image.NRGBA) float64 {
 	return factor
 }
 
+// parseHexColor parses a hex color string like "RRGGBB" or "RRGGBBAA" into color.NRGBA.
+func parseHexColor(s string) color.NRGBA {
+	s = strings.TrimPrefix(s, "#")
+	switch len(s) {
+	case 6:
+		r, _ := strconv.ParseUint(s[0:2], 16, 8)
+		g, _ := strconv.ParseUint(s[2:4], 16, 8)
+		b, _ := strconv.ParseUint(s[4:6], 16, 8)
+		return color.NRGBA{R: uint8(r), G: uint8(g), B: uint8(b), A: 255}
+	case 8:
+		r, _ := strconv.ParseUint(s[0:2], 16, 8)
+		g, _ := strconv.ParseUint(s[2:4], 16, 8)
+		b, _ := strconv.ParseUint(s[4:6], 16, 8)
+		a, _ := strconv.ParseUint(s[6:8], 16, 8)
+		return color.NRGBA{R: uint8(r), G: uint8(g), B: uint8(b), A: uint8(a)}
+	}
+	return color.NRGBA{A: 255}
+}
+
+// parseGradientStops parses gradient stop tokens of the form "RRGGBB,pos".
+func parseGradientStops(args []string) []vango.GradientStop {
+	var stops []vango.GradientStop
+	for _, arg := range args {
+		parts := strings.Split(arg, ",")
+		if len(parts) < 2 {
+			continue
+		}
+		c := parseHexColor(parts[0])
+		pos := parseFloatArg(parts[1], 0)
+		stops = append(stops, vango.GradientStop{Color: c, Pos: pos})
+	}
+	return stops
+}
+
 func applyCommand(p *vango.Pipeline, raw string) *vango.Pipeline {
 	toks := strings.Fields(strings.TrimSpace(raw))
 	if len(toks) == 0 {
@@ -469,6 +503,191 @@ func applyCommand(p *vango.Pipeline, raw string) *vango.Pipeline {
 		if len(args) >= 1 {
 			p = p.Apply(args[0])
 		}
+
+	// ---------- Distortions ----------
+	case "twirl":
+		angle := 1.0
+		radius := 0.0
+		if len(args) >= 1 {
+			angle = parseFloatArg(args[0], 1.0)
+		}
+		if len(args) >= 2 {
+			radius = parseFloatArg(args[1], 0.0)
+		}
+		p = p.Twirl(angle, radius)
+	case "spherize":
+		amount := 0.5
+		if len(args) >= 1 {
+			amount = parseFloatArg(args[0], 0.5)
+		}
+		p = p.Spherize(amount)
+	case "wave":
+		ampX, ampY, wlX, wlY := 10.0, 10.0, 50.0, 50.0
+		if len(args) >= 1 {
+			ampX = parseFloatArg(args[0], 10.0)
+		}
+		if len(args) >= 2 {
+			ampY = parseFloatArg(args[1], 10.0)
+		}
+		if len(args) >= 3 {
+			wlX = parseFloatArg(args[2], 50.0)
+		}
+		if len(args) >= 4 {
+			wlY = parseFloatArg(args[3], 50.0)
+		}
+		p = p.Wave(ampX, ampY, wlX, wlY)
+	case "ripple":
+		amp, wl := 10.0, 50.0
+		if len(args) >= 1 {
+			amp = parseFloatArg(args[0], 10.0)
+		}
+		if len(args) >= 2 {
+			wl = parseFloatArg(args[1], 50.0)
+		}
+		p = p.Ripple(amp, wl)
+	case "polar_coordinates", "polarcoordinates":
+		toPolar := true
+		if len(args) >= 1 && (args[0] == "from" || args[0] == "false" || args[0] == "0") {
+			toPolar = false
+		}
+		p = p.PolarCoordinates(toPolar)
+	case "pinch":
+		amount, radius := 0.5, 0.0
+		if len(args) >= 1 {
+			amount = parseFloatArg(args[0], 0.5)
+		}
+		if len(args) >= 2 {
+			radius = parseFloatArg(args[1], 0.0)
+		}
+		p = p.Pinch(amount, radius)
+	case "perspective":
+		// perspective x0 y0 x1 y1 x2 y2 x3 y3 outW outH
+		// corners: top-left, top-right, bottom-right, bottom-left of source region
+		if len(args) >= 10 {
+			corners := [4][2]float64{
+				{parseFloatArg(args[0], 0), parseFloatArg(args[1], 0)},
+				{parseFloatArg(args[2], 0), parseFloatArg(args[3], 0)},
+				{parseFloatArg(args[4], 0), parseFloatArg(args[5], 0)},
+				{parseFloatArg(args[6], 0), parseFloatArg(args[7], 0)},
+			}
+			outW := parseIntArg(args[8], p.Image().Bounds().Dx())
+			outH := parseIntArg(args[9], p.Image().Bounds().Dy())
+			p = p.PerspectiveTransform(corners, outW, outH)
+		}
+
+	// ---------- Retouching ----------
+	case "dodge":
+		amount := 0.3
+		rangeType := "midtones"
+		if len(args) >= 1 {
+			amount = parseFloatArg(args[0], 0.3)
+		}
+		if len(args) >= 2 {
+			rangeType = args[1]
+		}
+		p = p.Dodge(amount, rangeType)
+	case "burn":
+		amount := 0.3
+		rangeType := "midtones"
+		if len(args) >= 1 {
+			amount = parseFloatArg(args[0], 0.3)
+		}
+		if len(args) >= 2 {
+			rangeType = args[1]
+		}
+		p = p.Burn(amount, rangeType)
+
+	// ---------- Pro adjustments ----------
+	case "vibrance":
+		amount := 0.5
+		if len(args) >= 1 {
+			amount = parseFloatArg(args[0], 0.5)
+		}
+		p = p.Vibrance(amount)
+	case "dehaze":
+		strength := 0.5
+		if len(args) >= 1 {
+			strength = parseFloatArg(args[0], 0.5)
+		}
+		p = p.Dehaze(strength)
+	case "shadow_highlight", "shadowhighlight":
+		shadows, highlights := 0.3, 0.3
+		if len(args) >= 1 {
+			shadows = parseFloatArg(args[0], 0.3)
+		}
+		if len(args) >= 2 {
+			highlights = parseFloatArg(args[1], 0.3)
+		}
+		p = p.ShadowHighlight(shadows, highlights)
+	case "seam_carve", "seamcarve":
+		if len(args) >= 2 {
+			p = p.SeamCarve(parseIntArg(args[0], p.Image().Bounds().Dx()), parseIntArg(args[1], p.Image().Bounds().Dy()))
+		}
+	case "curves":
+		// curves in1 out1 in2 out2 ...  (values 0..1)
+		var pts []vango.CurvePoint
+		for i := 0; i+1 < len(args); i += 2 {
+			in := parseFloatArg(args[i], 0)
+			out := parseFloatArg(args[i+1], 0)
+			pts = append(pts, vango.CurvePoint{In: in, Out: out})
+		}
+		if len(pts) >= 2 {
+			p = p.Curves(pts)
+		}
+	case "gradient_map", "gradientmap":
+		// gradient_map RRGGBB,pos RRGGBB,pos ...
+		// e.g.: gradient_map 000000,0 FF8800,0.5 FFFFFF,1
+		stops := parseGradientStops(args)
+		if len(stops) >= 2 {
+			p = p.GradientMap(stops)
+		}
+	case "tint":
+		// tint RRGGBB opacity
+		if len(args) >= 2 {
+			c := parseHexColor(args[0])
+			opacity := parseFloatArg(args[1], 0.5)
+			p = p.Tint(c, opacity)
+		}
+	case "channel_curves", "channelcurves":
+		// channel_curves r:in1,out1,in2,out2 g:... b:...
+		var rPts, gPts, bPts []vango.CurvePoint
+		for _, arg := range args {
+			parts := strings.SplitN(arg, ":", 2)
+			if len(parts) != 2 {
+				continue
+			}
+			ch := strings.ToLower(parts[0])
+			nums := strings.Split(parts[1], ",")
+			var pts []vango.CurvePoint
+			for i := 0; i+1 < len(nums); i += 2 {
+				in := parseFloatArg(nums[i], 0)
+				out := parseFloatArg(nums[i+1], 0)
+				pts = append(pts, vango.CurvePoint{In: in, Out: out})
+			}
+			switch ch {
+			case "r":
+				rPts = pts
+			case "g":
+				gPts = pts
+			case "b":
+				bPts = pts
+			}
+		}
+		if len(rPts) >= 2 || len(gPts) >= 2 || len(bPts) >= 2 {
+			// Fill missing channels with identity curve
+			identity := []vango.CurvePoint{{In: 0, Out: 0}, {In: 1, Out: 1}}
+			if len(rPts) < 2 {
+				rPts = identity
+			}
+			if len(gPts) < 2 {
+				gPts = identity
+			}
+			if len(bPts) < 2 {
+				bPts = identity
+			}
+			p = p.ChannelCurves(rPts, gPts, bPts)
+		}
+
 	default:
 		fmt.Fprintln(os.Stderr, "unknown command:", name)
 	}
@@ -479,7 +698,22 @@ func main() {
 	inPath := flag.String("in", "", "input image path (required)")
 	outPath := flag.String("out", "out.png", "output image path")
 	cmds := flag.String("cmds", "", "comma-separated commands, e.g. \"blur 1.2; contrast 1.1; sepia 0.2\"")
+	projectOut := flag.String("project-out", "", "save the result as a vango project file (.vango) instead of a flat image")
+
+	// Track whether -out was explicitly supplied before parsing.
+	outExplicit := false
+	flag.Visit(func(f *flag.Flag) {
+		if f.Name == "out" {
+			outExplicit = true
+		}
+	})
 	flag.Parse()
+	// Re-check after Parse (flag.Visit only sees flags set after Parse).
+	flag.Visit(func(f *flag.Flag) {
+		if f.Name == "out" {
+			outExplicit = true
+		}
+	})
 
 	if *inPath == "" {
 		fmt.Fprintln(os.Stderr, "missing -in file")
@@ -487,18 +721,42 @@ func main() {
 		os.Exit(2)
 	}
 
-	// Load image
-	f, err := os.Open(*inPath)
-	if err != nil {
-		panic(err)
-	}
-	defer f.Close()
-	img, _, err := vango.Decode(f)
-	if err != nil {
-		panic(err)
+	// Load image – support both flat images and .vango project files.
+	var baseImg image.Image
+
+	if strings.HasSuffix(strings.ToLower(*inPath), ".vango") {
+		f, err := os.Open(*inPath)
+		if err != nil {
+			panic(err)
+		}
+		defer func() {
+			if cerr := f.Close(); cerr != nil {
+				fmt.Fprintln(os.Stderr, "warning: closing input file:", cerr)
+			}
+		}()
+		canvas, err := vango.LoadProject(f)
+		if err != nil {
+			panic(err)
+		}
+		baseImg = canvas.FlattenAll()
+	} else {
+		f, err := os.Open(*inPath)
+		if err != nil {
+			panic(err)
+		}
+		defer func() {
+			if cerr := f.Close(); cerr != nil {
+				fmt.Fprintln(os.Stderr, "warning: closing input file:", cerr)
+			}
+		}()
+		decoded, _, err := vango.Decode(f)
+		if err != nil {
+			panic(err)
+		}
+		baseImg = decoded
 	}
 
-	p := vango.From(img)
+	p := vango.From(baseImg)
 
 	// Parse commands
 	commands := splitCommands(*cmds)
@@ -506,21 +764,50 @@ func main() {
 		p = applyCommand(p, raw)
 	}
 
-	// Save output based on extension
+	result := p.Image()
+
+	// Save as vango project if requested.
+	if *projectOut != "" {
+		canvas := vango.NewCanvasFrom(result)
+		pf, err := os.Create(*projectOut)
+		if err != nil {
+			panic(err)
+		}
+		defer func() {
+			if cerr := pf.Close(); cerr != nil {
+				fmt.Fprintln(os.Stderr, "warning: closing project file:", cerr)
+			}
+		}()
+		if err := vango.SaveProject(canvas, pf); err != nil {
+			panic(err)
+		}
+		fmt.Println("Saved project", *projectOut)
+		if !outExplicit {
+			// No explicit -out flag given; skip flat image save.
+			return
+		}
+	}
+
+
+	// Save flat output based on extension
 	outFile, err := os.Create(*outPath)
 	if err != nil {
 		panic(err)
 	}
-	defer outFile.Close()
+	defer func() {
+		if cerr := outFile.Close(); cerr != nil {
+			fmt.Fprintln(os.Stderr, "warning: closing output file:", cerr)
+		}
+	}()
 
 	ext := strings.ToLower(*outPath)
 	switch {
 	case strings.HasSuffix(ext, ".jpg"), strings.HasSuffix(ext, ".jpeg"):
-		err = p.EncodeJPEG(outFile, 90)
+		err = vango.EncodeJPEG(outFile, result, 90)
 	case strings.HasSuffix(ext, ".gif"):
-		err = p.EncodeGIF(outFile)
+		err = vango.EncodeGIF(outFile, result)
 	default:
-		err = p.EncodePNG(outFile)
+		err = vango.EncodePNG(outFile, result)
 	}
 	if err != nil {
 		panic(err)
