@@ -688,6 +688,170 @@ func applyCommand(p *vango.Pipeline, raw string) *vango.Pipeline {
 			p = p.ChannelCurves(rPts, gPts, bPts)
 		}
 
+	// ---------- ImageMagick-inspired ----------
+	case "normalize":
+		p = p.Normalize()
+	case "auto_level", "autolevel":
+		p = p.AutoLevel()
+	case "charcoal":
+		radius := 1
+		sigma := 0.0
+		if len(args) >= 1 {
+			radius = parseIntArg(args[0], 1)
+		}
+		if len(args) >= 2 {
+			sigma = parseFloatArg(args[1], 0.0)
+		}
+		p = p.Charcoal(radius, sigma)
+	case "sketch":
+		sigma := 1.0
+		angle := 0.0
+		if len(args) >= 1 {
+			sigma = parseFloatArg(args[0], 1.0)
+		}
+		if len(args) >= 2 {
+			angle = parseFloatArg(args[1], 0.0)
+		}
+		p = p.Sketch(sigma, angle)
+	case "sigmoidal_contrast", "sigmoidalcontrast":
+		// sigmoidal_contrast [sharpen|soften] <strength> [midpoint]
+		sharpen := true
+		strength := 5.0
+		midpoint := 0.5
+		offset := 0
+		if len(args) >= 1 && (args[0] == "sharpen" || args[0] == "soften") {
+			sharpen = args[0] == "sharpen"
+			offset = 1
+		}
+		if len(args) > offset {
+			strength = parseFloatArg(args[offset], 5.0)
+		}
+		if len(args) > offset+1 {
+			midpoint = parseFloatArg(args[offset+1], 0.5)
+		}
+		p = p.SigmoidalContrast(sharpen, strength, midpoint)
+	case "extent":
+		// extent <width> <height> [gravity] [RRGGBB]
+		if len(args) >= 2 {
+			w := parseIntArg(args[0], p.Image().Bounds().Dx())
+			h := parseIntArg(args[1], p.Image().Bounds().Dy())
+			gravity := "center"
+			bg := color.NRGBA{0, 0, 0, 255}
+			if len(args) >= 3 {
+				gravity = args[2]
+			}
+			if len(args) >= 4 {
+				bg = parseHexColor(args[3])
+			}
+			p = p.Extent(w, h, gravity, bg)
+		}
+	case "roll":
+		// roll <dx> <dy>
+		dx, dy := 0, 0
+		if len(args) >= 1 {
+			dx = parseIntArg(args[0], 0)
+		}
+		if len(args) >= 2 {
+			dy = parseIntArg(args[1], 0)
+		}
+		p = p.Roll(dx, dy)
+	case "spread":
+		// spread <radius>
+		radius := 3
+		if len(args) >= 1 {
+			radius = parseIntArg(args[0], 3)
+		}
+		p = p.Spread(radius)
+	case "transpose":
+		p = p.Transpose()
+	case "transverse":
+		p = p.Transverse()
+	case "shave":
+		// shave <x> [y]  (remove x pixels from left/right, y from top/bottom)
+		sx, sy := 0, 0
+		if len(args) >= 1 {
+			sx = parseIntArg(args[0], 0)
+			sy = sx
+		}
+		if len(args) >= 2 {
+			sy = parseIntArg(args[1], sx)
+		}
+		p = p.Shave(sx, sy)
+	case "ordered_dither", "ordereddither":
+		// ordered_dither [levels]
+		levels := 2
+		if len(args) >= 1 {
+			levels = parseIntArg(args[0], 2)
+		}
+		p = p.OrderedDither(levels)
+	case "selective_blur", "selectiveblur":
+		// selective_blur <sigma> [threshold]
+		sigma := 1.0
+		threshold := 0.1
+		if len(args) >= 1 {
+			sigma = parseFloatArg(args[0], 1.0)
+		}
+		if len(args) >= 2 {
+			threshold = parseFloatArg(args[1], 0.1)
+		}
+		p = p.SelectiveBlur(sigma, threshold)
+	case "auto_threshold", "autothreshold":
+		p = p.AutoThreshold()
+	case "adaptive_blur", "adaptiveblur":
+		// adaptive_blur <sigma>
+		sigma := 1.0
+		if len(args) >= 1 {
+			sigma = parseFloatArg(args[0], 1.0)
+		}
+		p = p.AdaptiveBlur(sigma)
+	case "adaptive_sharpen", "adaptivesharpen":
+		// adaptive_sharpen <sigma>
+		sigma := 1.0
+		if len(args) >= 1 {
+			sigma = parseFloatArg(args[0], 1.0)
+		}
+		p = p.AdaptiveSharpen(sigma)
+	case "morphology":
+		// morphology <mode> [radius]    mode: dilate|erode|open|close
+		mode := "dilate"
+		radius := 1
+		if len(args) >= 1 {
+			mode = args[0]
+		}
+		if len(args) >= 2 {
+			radius = parseIntArg(args[1], 1)
+		}
+		p = p.MorphologyColor(radius, mode)
+	case "statistic":
+		// statistic <mode> [radius]    mode: minimum|maximum|mean|median
+		mode := "mean"
+		radius := 1
+		if len(args) >= 1 {
+			mode = args[0]
+		}
+		if len(args) >= 2 {
+			radius = parseIntArg(args[1], 1)
+		}
+		p = p.Statistic(radius, mode)
+	case "mean_shift", "meanshift":
+		// mean_shift [radius] [colorDist]
+		radius := 3
+		colorDist := 0.1
+		if len(args) >= 1 {
+			radius = parseIntArg(args[0], 3)
+		}
+		if len(args) >= 2 {
+			colorDist = parseFloatArg(args[1], 0.1)
+		}
+		p = p.MeanShift(radius, colorDist)
+	case "kuwahara":
+		// kuwahara [radius]
+		radius := 3
+		if len(args) >= 1 {
+			radius = parseIntArg(args[0], 3)
+		}
+		p = p.Kuwahara(radius)
+
 	default:
 		fmt.Fprintln(os.Stderr, "unknown command:", name)
 	}
