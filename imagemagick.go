@@ -220,8 +220,11 @@ func SigmoidalContrastCtx(ctx context.Context, src image.Image, sharpen bool, st
 		if sharpen {
 			out = (sig(u) - sigMin) / span
 		} else {
-			// Inverse: map back through inverse sigmoid
-			out = midpoint - math.Log(1.0/clampF01(float64(i)/255.0*(sigMax-sigMin)+sigMin)-1.0)/strength
+			// Inverse: map back through inverse sigmoid.
+			// Normalise the input value into the [sigMin, sigMax] range, then
+			// apply the inverse of the logistic function.
+			normalised := clampF01(float64(i)/255.0*(sigMax-sigMin) + sigMin)
+			out = midpoint - math.Log(1.0/normalised-1.0)/strength
 		}
 		lut[i] = clamp8(int(out * 255))
 	}
@@ -901,7 +904,7 @@ func StatisticCtx(ctx context.Context, src image.Image, radius int, mode string)
 			var rv, gv, bv int
 			switch mode {
 			case "minimum", "min":
-				rv, gv, bv = rVals[0], gVals[0], bVals[0]
+				rv, gv, bv = 255, 255, 255
 				for _, v := range rVals {
 					if v < rv {
 						rv = v
@@ -918,7 +921,7 @@ func StatisticCtx(ctx context.Context, src image.Image, radius int, mode string)
 					}
 				}
 			case "maximum", "max":
-				rv, gv, bv = rVals[0], gVals[0], bVals[0]
+				rv, gv, bv = 0, 0, 0
 				for _, v := range rVals {
 					if v > rv {
 						rv = v
