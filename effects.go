@@ -34,6 +34,22 @@ func EffectNames() []string {
 		"auto_contrast", "auto_color", "auto_brightness", "auto_vibrance", "auto_full",
 		// Composition
 		"edge", "watermark", "collage", "text", "apply",
+		// ImageMagick-inspired
+		"normalize", "auto_level",
+		"charcoal", "sketch",
+		"sigmoidal_contrast",
+		"extent",
+		"roll", "spread",
+		"transpose", "transverse",
+		"shave",
+		"ordered_dither",
+		"selective_blur",
+		"auto_threshold",
+		"adaptive_blur", "adaptive_sharpen",
+		"morphology",
+		"statistic",
+		"mean_shift",
+		"kuwahara",
 	}
 }
 

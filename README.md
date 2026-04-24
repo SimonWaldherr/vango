@@ -75,6 +75,27 @@ go build -o vango-cli ./cmd
 # perspective transform (4 source corners then output size)
 ./vango-cli -in demo.jpg -out demo.persp.jpg -cmds "perspective 50 30 750 10 780 570 20 590 800 600"
 
+# ImageMagick-inspired effects
+./vango-cli -in demo.jpg -out demo.charcoal.jpg -cmds "charcoal 2 1.0"
+./vango-cli -in demo.jpg -out demo.sketch.jpg -cmds "sketch 1.5"
+./vango-cli -in demo.jpg -out demo.normalize.jpg -cmds "normalize"
+./vango-cli -in demo.jpg -out demo.sigmoidal.jpg -cmds "sigmoidal_contrast sharpen 6 0.5"
+./vango-cli -in demo.jpg -out demo.kuwahara.jpg -cmds "kuwahara 3"
+./vango-cli -in demo.jpg -out demo.adaptive_blur.jpg -cmds "adaptive_blur 1.5"
+./vango-cli -in demo.jpg -out demo.adaptive_sharpen.jpg -cmds "adaptive_sharpen 1.5"
+./vango-cli -in demo.jpg -out demo.mean_shift.jpg -cmds "mean_shift 5 0.15"
+./vango-cli -in demo.jpg -out demo.roll.jpg -cmds "roll 100 50"
+./vango-cli -in demo.jpg -out demo.spread.jpg -cmds "spread 4"
+./vango-cli -in demo.jpg -out demo.transpose.jpg -cmds "transpose"
+./vango-cli -in demo.jpg -out demo.transverse.jpg -cmds "transverse"
+./vango-cli -in demo.jpg -out demo.shave.jpg -cmds "shave 20 15"
+./vango-cli -in demo.jpg -out demo.extent.jpg -cmds "extent 1400 1000 center FFFFFF"
+./vango-cli -in demo.jpg -out demo.ordered_dither.jpg -cmds "ordered_dither 4"
+./vango-cli -in demo.jpg -out demo.selective_blur.jpg -cmds "selective_blur 2.0 0.1"
+./vango-cli -in demo.jpg -out demo.auto_threshold.jpg -cmds "auto_threshold"
+./vango-cli -in demo.jpg -out demo.morphology_dilate.jpg -cmds "morphology dilate 2"
+./vango-cli -in demo.jpg -out demo.statistic.jpg -cmds "statistic median 2"
+
 # save as a layered vango project file (.vango) for later editing
 ./vango-cli -in demo.jpg -cmds "brightness 0.1; contrast 1.1" -project-out demo.vango
 
@@ -233,8 +254,12 @@ The `.vango` project format preserves:
 - `chromatic_aberration <shift>`
 - `add_noise <amount>`
 - `dither <levels>` — Floyd–Steinberg dithering
+- `ordered_dither [levels]` — Bayer-matrix ordered dithering
 - `posterize <levels>`
 - `threshold <cutoff>`
+- `charcoal [radius] [sigma]` — charcoal sketch effect
+- `sketch [sigma] [angle]` — pencil sketch
+- `kuwahara [radius]` — Kuwahara edge-preserving filter
 
 ### Retouching
 - `dodge <amount> [shadows|midtones|highlights]`
@@ -246,6 +271,34 @@ The `.vango` project format preserves:
 - `auto_vibrance`
 - `auto_color` — white balance + equalize + auto brightness + auto vibrance
 - `auto_full` — full auto enhance
+- `auto_level` — per-channel histogram stretch (alias: `normalize`)
+- `auto_threshold` — Otsu automatic thresholding
+
+### Color normalisation
+- `normalize` — stretch each channel's histogram to the full 0–255 range
+- `sigmoidal_contrast [sharpen|soften] <strength> [midpoint]` — S-curve contrast
+
+### Blur variants (extended)
+- `adaptive_blur <sigma>` — edge-adaptive Gaussian blur
+- `selective_blur <sigma> [threshold]` — blur only smooth regions
+- `mean_shift [radius] [colorDist]` — edge-preserving mean-shift denoising
+
+### Sharpening (extended)
+- `adaptive_sharpen <sigma>` — edge-adaptive unsharp mask
+
+### Morphology
+- `morphology <dilate|erode|open|close> [radius]` — morphological operations on colour images
+
+### Neighbourhood statistics
+- `statistic <minimum|maximum|mean|median> [radius]` — replace each pixel with neighbourhood statistic
+
+### Geometry (extended)
+- `transpose` — flip along the main diagonal (swap width and height)
+- `transverse` — flip along the anti-diagonal
+- `roll <dx> <dy>` — circular shift with wrap-around
+- `shave <x> [y]` — remove x pixels from left/right, y from top/bottom
+- `extent <w> <h> [gravity] [RRGGBB]` — expand canvas with fill colour; gravity: northwest/north/northeast/west/center/east/southwest/south/southeast
+- `spread <radius>` — random pixel displacement
 
 ### Utility
 - `whitebalance [x0 y0 x1 y1]` / `wb`
