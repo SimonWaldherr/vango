@@ -173,6 +173,23 @@ select {
 }
 select:focus { outline: 1px solid var(--accent); }
 
+textarea, input[type=text] {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 7px 9px;
+  border-radius: var(--radius);
+  font-size: .8rem;
+  width: 100%;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+textarea {
+  min-height: 74px;
+  resize: vertical;
+  line-height: 1.35;
+}
+textarea:focus, input[type=text]:focus { outline: 1px solid var(--accent); }
+
 input[type=checkbox] {
   accent-color: var(--accent);
   width: 15px; height: 15px; cursor: pointer; flex-shrink: 0;
@@ -220,6 +237,36 @@ button:disabled { opacity: .4; cursor: default; }
   border-color: var(--accent);
   opacity: 1;
 }
+.command-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  max-height: 180px;
+  overflow: auto;
+  padding-right: 2px;
+}
+.command-chip {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 5px 7px;
+  text-align: left;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: .7rem;
+  min-height: 28px;
+}
+.command-chip:hover { border-color: var(--accent); opacity: 1; }
+.command-chip.unsupported {
+  color: var(--muted);
+  border-style: dashed;
+  cursor: help;
+}
+.command-tools {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px;
+}
+.command-tools button { white-space: nowrap; }
 
 /* ─── Right panel ───────────────────────────────────────────── */
 #content {
@@ -769,6 +816,23 @@ canvas.active { display: block; }
       </div>
     </div>
 
+    <!-- All Commands -->
+    <div class="section">
+      <div class="section-header collapsed">All Commands</div>
+      <div class="section-body hidden">
+        <div class="ctrl">
+          <label>Extra Pipeline Commands</label>
+          <textarea id="extra-cmds" spellcheck="false" placeholder="curves 0 0 0.5 0.65 1 1; gradient_map 000000,0 FF8800,0.5 FFFFFF,1"></textarea>
+        </div>
+        <div class="command-tools">
+          <input type="text" id="effect-search" placeholder="Search effects" spellcheck="false">
+          <button class="secondary" id="btn-clear-extra">Clear</button>
+        </div>
+        <div class="command-list" id="effect-list"></div>
+        <div class="sidebar-note">Click an effect to append a runnable example. File-backed commands such as watermark and collage are listed but need local files in the CLI.</div>
+      </div>
+    </div>
+
     <!-- Transform -->
     <div class="section">
       <div class="section-header">Transform</div>
@@ -920,6 +984,9 @@ const btnBenchAll  = document.getElementById('btn-bench-methods');
 const compareToggle = document.getElementById('compare-toggle');
 const compareRange = document.getElementById('compare-range');
 const compareVal = document.getElementById('compare-val');
+const extraCmds = document.getElementById('extra-cmds');
+const effectSearch = document.getElementById('effect-search');
+const effectList = document.getElementById('effect-list');
 
 // ─── WebGL setup ────────────────────────────────────────────────────
 let gl = null, glTex = null, glProg = null;
@@ -1161,6 +1228,11 @@ function buildCommands() {
   if (noi > 0.005)                  cmds.push(`add_noise ${noi.toFixed(2)}`);
   if (mDist > 0)                    cmds.push(`motion_blur ${mAng} ${mDist}`);
 
+  const extra = extraCmds.value.trim();
+  if (extra) {
+    cmds.push(...extra.split(/[;\n]+/).map(s => s.trim()).filter(Boolean));
+  }
+
   return cmds;
 }
 
@@ -1286,6 +1358,7 @@ function resetControls(shouldProcess = true) {
   for (const id of ['grayscale','invert','equalize','edge','posterize-on','threshold-on','solarize-on','dither-on','denoise-on','flip-x','flip-y','polar-on']) {
     setControlChecked(id, false);
   }
+  extraCmds.value = '';
   document.getElementById('auto-mode').value = '';
   document.getElementById('dodge-range').value = 'midtones';
   document.getElementById('burn-range').value = 'midtones';
@@ -1479,7 +1552,7 @@ function updateSliderColors() {
 }
 
 // Wire all sliders & selects to scheduleProcess
-document.querySelectorAll('input[type=range], select, input[type=checkbox]').forEach(el => {
+document.querySelectorAll('input[type=range], select, input[type=checkbox], textarea').forEach(el => {
   const labelId = 'lbl-' + el.id;
   const lbl = document.getElementById(labelId);
   const update = () => {
@@ -1504,6 +1577,141 @@ document.querySelectorAll('input[type=range], select, input[type=checkbox]').for
   };
   el.addEventListener('input', update);
   el.addEventListener('change', update);
+});
+
+const unsupportedBrowserCommands = new Set([
+  'watermark', 'collage', 'clone_stamp', 'healing_brush', 'red_eye_removal',
+  'frequency_separation', 'blend_if',
+]);
+
+const commandExamples = {
+  blur: 'blur 1.2',
+  unsharp: 'unsharp 0.8 1.0',
+  contrast: 'contrast 1.15',
+  saturation: 'saturation 1.2',
+  brightness: 'brightness 0.08',
+  hue: 'hue 20',
+  sepia: 'sepia 0.35',
+  invert: 'invert',
+  gamma: 'gamma 1.2',
+  grayscale: 'grayscale',
+  solarize: 'solarize 128',
+  sharpen: 'sharpen 0.8',
+  high_pass_sharpen: 'high_pass_sharpen 1.0 3',
+  clarity: 'clarity 0.25',
+  rotate: 'rotate 8',
+  skew: 'skew 0.08 0',
+  resize: 'resize 640 480',
+  resize_nearest: 'resize_nearest 320 240',
+  crop: 'crop 40 40 560 420',
+  smartcrop: 'smartcrop 640 360',
+  trim: 'trim',
+  flip_x: 'flip_x',
+  flip_y: 'flip_y',
+  perspective: 'perspective 40 30 600 20 610 430 30 450 640 480',
+  pixelate: 'pixelate 8',
+  posterize: 'posterize 5',
+  threshold: 'threshold 128',
+  equalize: 'equalize',
+  tonemap: 'tonemap 1.4',
+  dither: 'dither 4',
+  emboss: 'emboss 0.7',
+  vignette: 'vignette 0.35',
+  noise_reduction: 'noise_reduction 1',
+  denoise: 'denoise 1',
+  bilateral: 'bilateral 3 30',
+  levels: 'levels 10 245 1 0 255',
+  curves: 'curves 0 0 0.5 0.65 1 1',
+  channel_mix: 'channel_mix 1.1 0 0 0 1 0 0 0 0.9',
+  color_balance: 'color_balance 0.05 0 0 0 0.03 0 -0.02 0 0.04',
+  hsl_selective: 'hsl_selective 30 45 1.4 0',
+  gradient_map: 'gradient_map 000000,0 FF8800,0.5 FFFFFF,1',
+  color_temperature: 'color_temperature 22',
+  tint: 'tint 2FB8C6 0.18',
+  whitebalance: 'whitebalance',
+  wb: 'wb',
+  motion_blur: 'motion_blur 20 12',
+  radial_blur: 'radial_blur 0.5 0.5 0.04',
+  tilt_shift: 'tilt_shift 0.5 0.3 5',
+  glow: 'glow 4 0.45',
+  halftone: 'halftone 5',
+  oil_painting: 'oil_painting 3 20',
+  chromatic_aberration: 'chromatic_aberration 4',
+  add_noise: 'add_noise 0.08',
+  twirl: 'twirl 1.2',
+  spherize: 'spherize 0.6',
+  wave: 'wave 10 8 60 50',
+  ripple: 'ripple 8 42',
+  polar_coordinates: 'polar_coordinates',
+  pinch: 'pinch 0.65',
+  dodge: 'dodge 0.25 midtones',
+  burn: 'burn 0.25 shadows',
+  vibrance: 'vibrance 0.45',
+  dehaze: 'dehaze 0.35',
+  shadow_highlight: 'shadow_highlight 0.3 0.25',
+  channel_curves: 'channel_curves r:0,0,0.5,0.65,1,1 g:0,0,1,1 b:0,0,0.5,0.4,1,1',
+  seam_carve: 'seam_carve 560 420',
+  auto_contrast: 'auto_contrast',
+  auto_color: 'auto_color',
+  auto_brightness: 'auto_brightness',
+  auto_vibrance: 'auto_vibrance',
+  auto_full: 'auto_full',
+  edge: 'edge',
+  text: 'text Vango 24 42',
+  apply: 'apply vintage',
+  normalize: 'normalize',
+  auto_level: 'auto_level',
+  charcoal: 'charcoal 2 1.0',
+  sketch: 'sketch 1.5',
+  sigmoidal_contrast: 'sigmoidal_contrast sharpen 6 0.5',
+  extent: 'extent 760 540 center FFFFFF',
+  roll: 'roll 80 40',
+  spread: 'spread 4',
+  transpose: 'transpose',
+  transverse: 'transverse',
+  shave: 'shave 20 15',
+  ordered_dither: 'ordered_dither 4',
+  selective_blur: 'selective_blur 2.0 0.1',
+  auto_threshold: 'auto_threshold',
+  adaptive_blur: 'adaptive_blur 1.5',
+  adaptive_sharpen: 'adaptive_sharpen 1.5',
+  morphology: 'morphology dilate 2',
+  statistic: 'statistic median 2',
+  mean_shift: 'mean_shift 5 0.15',
+  kuwahara: 'kuwahara 3',
+};
+
+function appendExtraCommand(cmd) {
+  const current = extraCmds.value.trim();
+  extraCmds.value = current ? `${current}; ${cmd}` : cmd;
+  scheduleProcess();
+}
+
+function renderEffectList() {
+  const effects = (window.vango && window.vango.effects) || [];
+  const q = effectSearch.value.trim().toLowerCase();
+  effectList.innerHTML = '';
+  effects
+    .filter(name => !q || name.toLowerCase().includes(q))
+    .forEach(name => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'command-chip';
+      btn.textContent = name;
+      const unsupported = unsupportedBrowserCommands.has(name);
+      if (unsupported) btn.classList.add('unsupported');
+      btn.title = unsupported ? 'Available in CLI or lower-level APIs, not the browser pixel pipeline' : (commandExamples[name] || name);
+      btn.addEventListener('click', () => {
+        if (!unsupported) appendExtraCommand(commandExamples[name] || name);
+      });
+      effectList.appendChild(btn);
+    });
+}
+
+effectSearch.addEventListener('input', renderEffectList);
+document.getElementById('btn-clear-extra').addEventListener('click', () => {
+  extraCmds.value = '';
+  scheduleProcess();
 });
 
 // Toggle sub-controls
@@ -1652,6 +1860,7 @@ async function bootWasm() {
     wasmVer.textContent = `v${window.vango.version}`;
     updateAllLabels();
     updateSliderColors();
+    renderEffectList();
 
     // If image is already loaded (race), process it
     if (state.sourcePix) scheduleProcess();

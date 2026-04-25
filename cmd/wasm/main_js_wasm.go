@@ -39,8 +39,67 @@ func parseIntArg(s string, fallback int) int {
 	return v
 }
 
+func smartCropRect(b image.Rectangle, outW, outH int) image.Rectangle {
+	if outW <= 0 || outH <= 0 || b.Empty() {
+		return b
+	}
+	srcW := b.Dx()
+	srcH := b.Dy()
+	target := float64(outW) / float64(outH)
+	srcAspect := float64(srcW) / float64(srcH)
+
+	cropW, cropH := srcW, srcH
+	if srcAspect > target {
+		cropW = int(math.Round(float64(srcH) * target))
+	} else if srcAspect < target {
+		cropH = int(math.Round(float64(srcW) / target))
+	}
+	if cropW < 1 {
+		cropW = 1
+	}
+	if cropH < 1 {
+		cropH = 1
+	}
+	x0 := b.Min.X + (srcW-cropW)/2
+	y0 := b.Min.Y + (srcH-cropH)/2
+	return image.Rect(x0, y0, x0+cropW, y0+cropH)
+}
+
+func parseHexColor(s string) color.NRGBA {
+	s = strings.TrimPrefix(s, "#")
+	switch len(s) {
+	case 6:
+		r, _ := strconv.ParseUint(s[0:2], 16, 8)
+		g, _ := strconv.ParseUint(s[2:4], 16, 8)
+		b, _ := strconv.ParseUint(s[4:6], 16, 8)
+		return color.NRGBA{R: uint8(r), G: uint8(g), B: uint8(b), A: 255}
+	case 8:
+		r, _ := strconv.ParseUint(s[0:2], 16, 8)
+		g, _ := strconv.ParseUint(s[2:4], 16, 8)
+		b, _ := strconv.ParseUint(s[4:6], 16, 8)
+		a, _ := strconv.ParseUint(s[6:8], 16, 8)
+		return color.NRGBA{R: uint8(r), G: uint8(g), B: uint8(b), A: uint8(a)}
+	}
+	return color.NRGBA{A: 255}
+}
+
+func parseGradientStops(args []string) []vango.GradientStop {
+	var stops []vango.GradientStop
+	for _, arg := range args {
+		parts := strings.Split(arg, ",")
+		if len(parts) < 2 {
+			continue
+		}
+		stops = append(stops, vango.GradientStop{
+			Color: parseHexColor(parts[0]),
+			Pos:   parseFloatArg(parts[1], 0),
+		})
+	}
+	return stops
+}
+
 func splitCommands(s string) []string {
-	return strings.FieldsFunc(s, func(r rune) bool { return r == ';' || r == ',' || r == '\n' })
+	return strings.FieldsFunc(s, func(r rune) bool { return r == ';' || r == '\n' })
 }
 
 // autoBrightnessDelta targets mid-grey average luma (0.5), clamped to ±0.3.
@@ -190,6 +249,14 @@ func applyCommand(p *vango.Pipeline, raw string) *vango.Pipeline {
 				parseIntArg(args[2], 0), parseIntArg(args[3], 0),
 			))
 		}
+	case "smartcrop", "smart_crop":
+		if len(args) >= 2 {
+			w := parseIntArg(args[0], 1)
+			h := parseIntArg(args[1], 1)
+			p = p.Crop(smartCropRect(p.Image().Bounds(), w, h)).ResizeBilinear(w, h)
+		}
+	case "trim":
+		p = p.Trim(color.NRGBA{R: 255, G: 255, B: 255, A: 255}, 8)
 	case "pixelate":
 		if len(args) >= 1 {
 			p = p.Pixelate(parseIntArg(args[0], 1))
@@ -212,6 +279,10 @@ func applyCommand(p *vango.Pipeline, raw string) *vango.Pipeline {
 		if len(args) >= 1 {
 			p = p.Dither(parseIntArg(args[0], 4))
 		}
+	case "text":
+		if len(args) >= 3 {
+			p = p.DrawText(args[0], image.Pt(parseIntArg(args[1], 0), parseIntArg(args[2], 0)), color.NRGBA{A: 255}, 2)
+		}
 	case "whitebalance", "wb":
 		p = p.WhiteBalance(image.Rectangle{})
 	case "autocontrast", "auto_contrast":
@@ -229,7 +300,7 @@ func applyCommand(p *vango.Pipeline, raw string) *vango.Pipeline {
 		p = vango.From(n).Brightness(autoBrightnessDelta(n))
 		brightened := p.Image()
 		p = vango.From(brightened).Saturation(autoVibranceFactor(brightened))
-	case "autofull", "auto_full":
+	case "autofull", "auto_full", "autoenhance", "auto_enhance":
 		p = p.WhiteBalance(image.Rectangle{})
 		p = p.NoiseReduction(1)
 		p = p.Equalize()
@@ -369,6 +440,10 @@ func applyCommand(p *vango.Pipeline, raw string) *vango.Pipeline {
 		p = p.FlipX()
 	case "flipy", "flip_y":
 		p = p.FlipY()
+	case "apply":
+		if len(args) >= 1 {
+			p = p.Apply(args[0])
+		}
 
 	// ── Distortion filters ──
 	case "twirl":
@@ -425,6 +500,16 @@ func applyCommand(p *vango.Pipeline, raw string) *vango.Pipeline {
 			radius = parseFloatArg(args[1], 0)
 		}
 		p = p.Pinch(amount, radius)
+	case "perspective":
+		if len(args) >= 10 {
+			corners := [4][2]float64{
+				{parseFloatArg(args[0], 0), parseFloatArg(args[1], 0)},
+				{parseFloatArg(args[2], 0), parseFloatArg(args[3], 0)},
+				{parseFloatArg(args[4], 0), parseFloatArg(args[5], 0)},
+				{parseFloatArg(args[6], 0), parseFloatArg(args[7], 0)},
+			}
+			p = p.PerspectiveTransform(corners, parseIntArg(args[8], p.Image().Bounds().Dx()), parseIntArg(args[9], p.Image().Bounds().Dy()))
+		}
 
 	// ── Retouching ──
 	case "dodge":
@@ -471,12 +556,204 @@ func applyCommand(p *vango.Pipeline, raw string) *vango.Pipeline {
 			highAmt = parseFloatArg(args[1], 0.3)
 		}
 		p = p.ShadowHighlight(shadowAmt, highAmt)
+	case "curves":
+		var pts []vango.CurvePoint
+		for i := 0; i+1 < len(args); i += 2 {
+			pts = append(pts, vango.CurvePoint{In: parseFloatArg(args[i], 0), Out: parseFloatArg(args[i+1], 0)})
+		}
+		if len(pts) >= 2 {
+			p = p.Curves(pts)
+		}
+	case "gradientmap", "gradient_map":
+		stops := parseGradientStops(args)
+		if len(stops) >= 2 {
+			p = p.GradientMap(stops)
+		}
+	case "tint":
+		if len(args) >= 2 {
+			p = p.Tint(parseHexColor(args[0]), parseFloatArg(args[1], 0.5))
+		}
+	case "channelcurves", "channel_curves":
+		identity := []vango.CurvePoint{{In: 0, Out: 0}, {In: 1, Out: 1}}
+		rPts, gPts, bPts := identity, identity, identity
+		for _, arg := range args {
+			parts := strings.SplitN(arg, ":", 2)
+			if len(parts) != 2 {
+				continue
+			}
+			nums := strings.Split(parts[1], ",")
+			var pts []vango.CurvePoint
+			for i := 0; i+1 < len(nums); i += 2 {
+				pts = append(pts, vango.CurvePoint{In: parseFloatArg(nums[i], 0), Out: parseFloatArg(nums[i+1], 0)})
+			}
+			if len(pts) < 2 {
+				continue
+			}
+			switch strings.ToLower(parts[0]) {
+			case "r":
+				rPts = pts
+			case "g":
+				gPts = pts
+			case "b":
+				bPts = pts
+			}
+		}
+		p = p.ChannelCurves(rPts, gPts, bPts)
 
 	// ── Seam Carve ──
 	case "seamcarve", "seam_carve":
 		if len(args) >= 2 {
 			p = p.SeamCarve(parseIntArg(args[0], 100), parseIntArg(args[1], 100))
 		}
+
+	// ── ImageMagick-inspired ──
+	case "normalize":
+		p = p.Normalize()
+	case "autolevel", "auto_level":
+		p = p.AutoLevel()
+	case "charcoal":
+		radius := 1
+		sigma := 0.0
+		if len(args) >= 1 {
+			radius = parseIntArg(args[0], 1)
+		}
+		if len(args) >= 2 {
+			sigma = parseFloatArg(args[1], 0)
+		}
+		p = p.Charcoal(radius, sigma)
+	case "sketch":
+		sigma := 1.0
+		angle := 0.0
+		if len(args) >= 1 {
+			sigma = parseFloatArg(args[0], 1)
+		}
+		if len(args) >= 2 {
+			angle = parseFloatArg(args[1], 0)
+		}
+		p = p.Sketch(sigma, angle)
+	case "sigmoidalcontrast", "sigmoidal_contrast":
+		sharpen := true
+		strength := 5.0
+		midpoint := 0.5
+		offset := 0
+		if len(args) >= 1 && (args[0] == "sharpen" || args[0] == "soften") {
+			sharpen = args[0] == "sharpen"
+			offset = 1
+		}
+		if len(args) > offset {
+			strength = parseFloatArg(args[offset], 5)
+		}
+		if len(args) > offset+1 {
+			midpoint = parseFloatArg(args[offset+1], 0.5)
+		}
+		p = p.SigmoidalContrast(sharpen, strength, midpoint)
+	case "extent":
+		if len(args) >= 2 {
+			gravity := "center"
+			bg := color.NRGBA{A: 255}
+			if len(args) >= 3 {
+				gravity = args[2]
+			}
+			if len(args) >= 4 {
+				bg = parseHexColor(args[3])
+			}
+			p = p.Extent(parseIntArg(args[0], p.Image().Bounds().Dx()), parseIntArg(args[1], p.Image().Bounds().Dy()), gravity, bg)
+		}
+	case "roll":
+		dx, dy := 0, 0
+		if len(args) >= 1 {
+			dx = parseIntArg(args[0], 0)
+		}
+		if len(args) >= 2 {
+			dy = parseIntArg(args[1], 0)
+		}
+		p = p.Roll(dx, dy)
+	case "spread":
+		radius := 3
+		if len(args) >= 1 {
+			radius = parseIntArg(args[0], 3)
+		}
+		p = p.Spread(radius)
+	case "transpose":
+		p = p.Transpose()
+	case "transverse":
+		p = p.Transverse()
+	case "shave":
+		sx, sy := 0, 0
+		if len(args) >= 1 {
+			sx = parseIntArg(args[0], 0)
+			sy = sx
+		}
+		if len(args) >= 2 {
+			sy = parseIntArg(args[1], sx)
+		}
+		p = p.Shave(sx, sy)
+	case "ordereddither", "ordered_dither":
+		levels := 2
+		if len(args) >= 1 {
+			levels = parseIntArg(args[0], 2)
+		}
+		p = p.OrderedDither(levels)
+	case "selectiveblur", "selective_blur":
+		sigma := 1.0
+		threshold := 0.1
+		if len(args) >= 1 {
+			sigma = parseFloatArg(args[0], 1)
+		}
+		if len(args) >= 2 {
+			threshold = parseFloatArg(args[1], 0.1)
+		}
+		p = p.SelectiveBlur(sigma, threshold)
+	case "autothreshold", "auto_threshold":
+		p = p.AutoThreshold()
+	case "adaptiveblur", "adaptive_blur":
+		sigma := 1.0
+		if len(args) >= 1 {
+			sigma = parseFloatArg(args[0], 1)
+		}
+		p = p.AdaptiveBlur(sigma)
+	case "adaptivesharpen", "adaptive_sharpen":
+		sigma := 1.0
+		if len(args) >= 1 {
+			sigma = parseFloatArg(args[0], 1)
+		}
+		p = p.AdaptiveSharpen(sigma)
+	case "morphology":
+		mode := "dilate"
+		radius := 1
+		if len(args) >= 1 {
+			mode = args[0]
+		}
+		if len(args) >= 2 {
+			radius = parseIntArg(args[1], 1)
+		}
+		p = p.MorphologyColor(radius, mode)
+	case "statistic":
+		mode := "mean"
+		radius := 1
+		if len(args) >= 1 {
+			mode = args[0]
+		}
+		if len(args) >= 2 {
+			radius = parseIntArg(args[1], 1)
+		}
+		p = p.Statistic(radius, mode)
+	case "meanshift", "mean_shift":
+		radius := 3
+		colorDist := 0.1
+		if len(args) >= 1 {
+			radius = parseIntArg(args[0], 3)
+		}
+		if len(args) >= 2 {
+			colorDist = parseFloatArg(args[1], 0.1)
+		}
+		p = p.MeanShift(radius, colorDist)
+	case "kuwahara":
+		radius := 3
+		if len(args) >= 1 {
+			radius = parseIntArg(args[0], 3)
+		}
+		p = p.Kuwahara(radius)
 	}
 	return p
 }
