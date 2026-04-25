@@ -8,13 +8,15 @@
 /* ─── Reset & Variables ─────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
-  --bg:       #0f1117;
-  --surface:  #1a1d27;
-  --border:   #2e3148;
-  --accent:   #6c63ff;
-  --accent2:  #ff6584;
-  --text:     #e2e4f0;
-  --muted:    #8b8fa8;
+  --bg:       #101318;
+  --surface:  #181d24;
+  --surface2: #202733;
+  --border:   #323b48;
+  --accent:   #2fb8c6;
+  --accent2:  #e9a84a;
+  --danger:   #e76370;
+  --text:     #eef3f7;
+  --muted:    #9da8b5;
   --success:  #4caf88;
   --warn:     #f4a261;
   --radius:   8px;
@@ -34,25 +36,41 @@ body {
 header {
   background: var(--surface);
   border-bottom: 1px solid var(--border);
-  padding: 14px 24px;
+  padding: 12px 18px;
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 14px;
   flex-wrap: wrap;
+}
+header .brand {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 header h1 {
   font-size: 1.4rem;
   font-weight: 700;
+  line-height: 1;
   background: linear-gradient(135deg, var(--accent), var(--accent2));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
-header .version { font-size: .78rem; color: var(--muted); margin-left: -8px; }
+header .tagline { font-size: .76rem; color: var(--muted); }
+header .version { font-size: .78rem; color: var(--muted); }
 header .spacer { flex: 1; }
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 5px 10px;
+  background: rgba(255,255,255,.025);
+}
 .status-dot {
   width: 9px; height: 9px; border-radius: 50%;
-  background: var(--muted); display: inline-block; margin-right: 6px;
+  background: var(--muted); display: inline-block;
   transition: background .3s;
 }
 .status-dot.ready  { background: var(--success); }
@@ -77,6 +95,11 @@ main {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+.sidebar-note {
+  color: var(--muted);
+  font-size: .76rem;
+  line-height: 1.4;
 }
 .section-header {
   font-size: .72rem;
@@ -161,7 +184,7 @@ input[type=checkbox] {
 
 button {
   background: var(--accent);
-  color: #fff;
+  color: #061014;
   border: none;
   padding: 7px 14px;
   border-radius: var(--radius);
@@ -177,8 +200,26 @@ button.secondary {
   border: 1px solid var(--border);
   color: var(--text);
 }
-button.danger { background: var(--accent2); }
+button.danger { background: var(--danger); color: #fff; }
 button:disabled { opacity: .4; cursor: default; }
+.button-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.button-row button { flex: 1; min-width: 0; }
+.preset-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+.preset-grid button {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  text-align: left;
+  padding: 8px 10px;
+}
+.preset-grid button:hover {
+  border-color: var(--accent);
+  opacity: 1;
+}
 
 /* ─── Right panel ───────────────────────────────────────────── */
 #content {
@@ -253,6 +294,46 @@ canvas {
   display: none;
 }
 canvas.active { display: block; }
+#compare-original {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  display: none;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.canvas-wrapper.compare-mode #compare-original {
+  display: block;
+}
+.compare-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--compare-x, 50%);
+  width: 2px;
+  background: var(--accent2);
+  box-shadow: 0 0 0 1px rgba(0,0,0,.45);
+  display: none;
+  pointer-events: none;
+}
+.canvas-wrapper.compare-mode .compare-line { display: block; }
+.compare-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: rgba(16,19,24,.78);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text);
+  font-size: .72rem;
+  padding: 4px 8px;
+  display: none;
+  pointer-events: none;
+}
+.canvas-wrapper.compare-mode .compare-badge { display: block; }
 #img-b64 {
   max-width: 100%;
   max-height: 100%;
@@ -287,6 +368,15 @@ canvas.active { display: block; }
   flex-wrap: wrap;
 }
 #info-bar .info-item strong { color: var(--text); }
+.compare-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+}
+.compare-control input[type=range] {
+  width: 120px;
+}
 .processing-spinner {
   width: 14px; height: 14px;
   border: 2px solid var(--border);
@@ -359,11 +449,16 @@ canvas.active { display: block; }
 
 <!-- ═══════════════════════ HEADER ═══════════════════════════════ -->
 <header>
-  <h1>🎨 Vango</h1>
+  <div class="brand">
+    <h1>Vango</h1>
+    <div class="tagline">WASM image pipeline playground</div>
+  </div>
   <span class="version" id="wasm-version">loading…</span>
   <span class="spacer"></span>
-  <span class="status-dot" id="status-dot"></span>
-  <span id="status-text">Loading WASM…</span>
+  <span class="status-pill">
+    <span class="status-dot" id="status-dot"></span>
+    <span id="status-text">Loading WASM…</span>
+  </span>
 </header>
 
 <!-- ═══════════════════════ MAIN ═════════════════════════════════ -->
@@ -378,12 +473,26 @@ canvas.active { display: block; }
       <div class="section-body">
         <div id="drop-zone" role="button" tabindex="0" title="Drop an image or click to choose">
           <input type="file" id="file-input" accept="image/*">
-          <div>📂 Drop image here or <strong style="color:var(--accent)">click to upload</strong></div>
+          <div>Drop image here or <strong style="color:var(--accent)">click to upload</strong></div>
           <div class="upload-hint">JPEG · PNG · GIF · BMP · TIFF  (images wider than 900 px are downscaled for performance)</div>
         </div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;">
-          <button id="btn-sample" style="flex:1">Load Sample</button>
-          <button id="btn-reset" class="secondary" style="flex:1">Reset All</button>
+        <div class="button-row">
+          <button id="btn-sample">Load Sample</button>
+          <button id="btn-reset" class="secondary">Reset All</button>
+        </div>
+        <div class="sidebar-note">Start with a preset, then fine tune individual operations. The CLI command below updates from the same pipeline.</div>
+      </div>
+    </div>
+
+    <!-- Presets -->
+    <div class="section">
+      <div class="section-header">Presets</div>
+      <div class="section-body">
+        <div class="preset-grid">
+          <button data-preset="clean">Clean Photo</button>
+          <button data-preset="cinematic">Cinematic</button>
+          <button data-preset="print">Print Study</button>
+          <button data-preset="sketch">Sketch</button>
         </div>
       </div>
     </div>
@@ -711,8 +820,11 @@ canvas.active { display: block; }
           Upload or load a sample image to begin
         </div>
         <canvas id="canvas-2d"></canvas>
+        <canvas id="compare-original" aria-hidden="true"></canvas>
         <canvas id="canvas-webgl"></canvas>
         <img id="img-b64" alt="Processed image (base64)" draggable="false">
+        <div class="compare-line" id="compare-line"></div>
+        <div class="compare-badge">Original / Processed</div>
       </div>
     </div>
 
@@ -724,7 +836,13 @@ canvas.active { display: block; }
       <div class="info-item">Last render: <strong id="inf-time">—</strong></div>
       <div class="info-item">Commands: <strong id="inf-cmds">0</strong></div>
       <div style="flex:1"></div>
-      <button class="secondary" id="btn-download" disabled title="Download processed image">⬇ Download</button>
+      <label class="compare-control" title="Compare original and processed output">
+        <input type="checkbox" id="compare-toggle">
+        Compare
+        <input type="range" id="compare-range" min="5" max="95" step="1" value="50" disabled>
+        <strong id="compare-val">50%</strong>
+      </label>
+      <button class="secondary" id="btn-download" disabled title="Download processed image">Download</button>
     </div>
 
     <!-- Bottom panels: CLI + Benchmark -->
@@ -771,6 +889,11 @@ const state = {
   outputTab: 'canvas2d',
   processing: false,
   lastCmds: '',
+  lastPixels: null,
+  lastW: 0,
+  lastH: 0,
+  compareEnabled: false,
+  compareSplit: 50,
   debounceTimer: null,
 };
 
@@ -780,6 +903,8 @@ const statusText = document.getElementById('status-text');
 const wasmVer    = document.getElementById('wasm-version');
 const canvas2d   = document.getElementById('canvas-2d');
 const canvasGL   = document.getElementById('canvas-webgl');
+const compareCanvas = document.getElementById('compare-original');
+const canvasWrapper = document.getElementById('canvas-wrapper');
 const imgB64     = document.getElementById('img-b64');
 const placeholder = document.getElementById('canvas-placeholder');
 const spinner    = document.getElementById('spinner');
@@ -792,6 +917,9 @@ const benchResults = document.getElementById('bench-results');
 const btnDownload  = document.getElementById('btn-download');
 const btnBench     = document.getElementById('btn-bench');
 const btnBenchAll  = document.getElementById('btn-bench-methods');
+const compareToggle = document.getElementById('compare-toggle');
+const compareRange = document.getElementById('compare-range');
+const compareVal = document.getElementById('compare-val');
 
 // ─── WebGL setup ────────────────────────────────────────────────────
 let gl = null, glTex = null, glProg = null;
@@ -860,14 +988,48 @@ function renderCanvas2D(pixels, w, h) {
   ctx.putImageData(id, 0, 0);
 }
 
+function renderOriginalCompare() {
+  if (!state.sourcePix) return;
+  compareCanvas.width = state.sourceW;
+  compareCanvas.height = state.sourceH;
+  const ctx = compareCanvas.getContext('2d');
+  ctx.putImageData(state.sourcePix, 0, 0);
+  compareCanvas.style.clipPath = `inset(0 ${100 - state.compareSplit}% 0 0)`;
+  canvasWrapper.style.setProperty('--compare-x', `${state.compareSplit}%`);
+}
+
+function syncActiveTab(tabName) {
+  document.querySelectorAll('.tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.tab === tabName);
+  });
+}
+
+function updateCompareMode() {
+  const active = state.compareEnabled && state.sourcePix && state.lastPixels;
+  canvasWrapper.classList.toggle('compare-mode', Boolean(active));
+  compareRange.disabled = !active;
+  compareRange.value = state.compareSplit;
+  compareVal.textContent = `${state.compareSplit}%`;
+  if (active) renderOriginalCompare();
+}
+
 // ─── Render dispatch ───────────────────────────────────────────────
 function showOutput(pixels, w, h, tab) {
   placeholder.style.display = 'none';
+  state.lastPixels = pixels;
+  state.lastW = w;
+  state.lastH = h;
   canvas2d.classList.remove('active');
   canvasGL.classList.remove('active');
   imgB64.classList.remove('active');
 
-  if (tab === 'canvas2d') {
+  if (state.compareEnabled) {
+    state.outputTab = 'canvas2d';
+    syncActiveTab('canvas2d');
+    renderCanvas2D(pixels, w, h);
+    canvas2d.classList.add('active');
+    infMethod.textContent = 'Canvas 2D compare';
+  } else if (tab === 'canvas2d') {
     renderCanvas2D(pixels, w, h);
     canvas2d.classList.add('active');
     infMethod.textContent = 'Canvas 2D';
@@ -887,6 +1049,7 @@ function showOutput(pixels, w, h, tab) {
     infMethod.textContent = 'Base64 <img>';
   }
   infSize.textContent = `${w} × ${h}`;
+  updateCompareMode();
 }
 
 // ─── Build command string ──────────────────────────────────────────
@@ -1061,9 +1224,11 @@ function loadImageData(src) {
       state.sourcePix = ctx.getImageData(0, 0, w, h);
       state.sourceW = w;
       state.sourceH = h;
+      state.lastPixels = null;
       placeholder.style.display = 'none';
       btnBench.disabled = false;
       btnBenchAll.disabled = false;
+      updateCompareMode();
       res();
     };
     img.onerror = rej;
@@ -1092,6 +1257,83 @@ fileInput.addEventListener('change', () => {
 function handleFile(file) {
   const url = URL.createObjectURL(file);
   loadImageData(url).then(scheduleProcess).catch(console.error);
+}
+
+function setControlValue(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.value = value;
+}
+
+function setControlChecked(id, checked) {
+  const el = document.getElementById(id);
+  if (el) el.checked = checked;
+}
+
+function resetControls(shouldProcess = true) {
+  const defaults = {
+    brightness: 0, contrast: 1, saturation: 1, hue: 0, gamma: 1,
+    blur: 0, sepia: 0, vignette: 0, emboss: 0, tonemap: 1,
+    pixelate: 1, posterize: 4, threshold: 128, solarize: 128, dither: 4, denoise: 1,
+    rotate: 0, 'skew-x': 0, 'skew-y': 0,
+    sharpen: 0, clarity: 0,
+    twirl: 0, spherize: 0, 'wave-amp': 0, 'wave-wl': 60, 'ripple-amp': 0, 'ripple-wl': 30, pinch: 1,
+    dodge: 0, burn: 0,
+    vibrance: 0, dehaze: 0, 'shadow-recovery': 0, 'highlight-recovery': 0, 'color-temp': 0,
+    'glow-sigma': 0, halftone: 0, 'oil-radius': 0, chromatic: 0, noise: 0,
+    'motion-angle': 0, 'motion-dist': 0,
+  };
+  for (const [id, val] of Object.entries(defaults)) setControlValue(id, val);
+  for (const id of ['grayscale','invert','equalize','edge','posterize-on','threshold-on','solarize-on','dither-on','denoise-on','flip-x','flip-y','polar-on']) {
+    setControlChecked(id, false);
+  }
+  document.getElementById('auto-mode').value = '';
+  document.getElementById('dodge-range').value = 'midtones';
+  document.getElementById('burn-range').value = 'midtones';
+  ['posterize-ctrl','threshold-ctrl','solarize-ctrl','dither-ctrl','denoise-ctrl'].forEach(id => {
+    document.getElementById(id).style.display = 'none';
+  });
+  updateAllLabels();
+  updateSliderColors();
+  if (shouldProcess) scheduleProcess();
+}
+
+function applyPreset(name) {
+  resetControls(false);
+  const presets = {
+    clean: () => {
+      setControlValue('auto-mode', 'auto_color');
+      setControlValue('clarity', 0.18);
+      setControlValue('sharpen', 0.45);
+    },
+    cinematic: () => {
+      setControlValue('contrast', 1.22);
+      setControlValue('saturation', 0.86);
+      setControlValue('vignette', 0.28);
+      setControlValue('color-temp', 16);
+      setControlValue('shadow-recovery', 0.18);
+      setControlValue('highlight-recovery', 0.12);
+    },
+    print: () => {
+      setControlValue('sepia', 0.18);
+      setControlValue('contrast', 1.16);
+      setControlValue('halftone', 5);
+      setControlValue('noise', 0.04);
+    },
+    sketch: () => {
+      setControlChecked('edge', true);
+      setControlValue('blur', 0.4);
+      setControlValue('contrast', 1.4);
+      setControlChecked('grayscale', true);
+    },
+  };
+  if (presets[name]) presets[name]();
+  updateAllLabels();
+  updateSliderColors();
+  if (!state.sourcePix) {
+    document.getElementById('btn-sample').click();
+  } else {
+    scheduleProcess();
+  }
 }
 
 // ─── Sample image ──────────────────────────────────────────────────
@@ -1129,10 +1371,15 @@ document.getElementById('btn-sample').addEventListener('click', () => {
     ctx.fill();
   }
   // Bright highlights
+  let seed = 42;
+  const rnd = () => {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    return seed / 4294967296;
+  };
   for (let i = 0; i < 40; i++) {
-    ctx.fillStyle = `rgba(255,255,255,${Math.random()*.6+.1})`;
+    ctx.fillStyle = `rgba(255,255,255,${rnd()*.6+.1})`;
     ctx.beginPath();
-    ctx.arc(Math.random()*w, Math.random()*h, Math.random()*3+1, 0, Math.PI*2);
+    ctx.arc(rnd()*w, rnd()*h, rnd()*3+1, 0, Math.PI*2);
     ctx.fill();
   }
   // Text watermark
@@ -1144,52 +1391,48 @@ document.getElementById('btn-sample').addEventListener('click', () => {
   state.sourcePix = ctx.getImageData(0, 0, w, h);
   state.sourceW = w;
   state.sourceH = h;
+  state.lastPixels = null;
   placeholder.style.display = 'none';
   btnBench.disabled = false;
   btnBenchAll.disabled = false;
+  updateCompareMode();
   scheduleProcess();
 });
 
 // ─── Reset all controls ────────────────────────────────────────────
-document.getElementById('btn-reset').addEventListener('click', () => {
-  const defaults = {
-    brightness: 0, contrast: 1, saturation: 1, hue: 0, gamma: 1,
-    blur: 0, sepia: 0, vignette: 0, emboss: 0, tonemap: 1,
-    pixelate: 1, posterize: 4, threshold: 128, solarize: 128, dither: 4, denoise: 1,
-    rotate: 0, 'skew-x': 0, 'skew-y': 0,
-    sharpen: 0, clarity: 0,
-    twirl: 0, spherize: 0, 'wave-amp': 0, 'wave-wl': 60, 'ripple-amp': 0, 'ripple-wl': 30, pinch: 1,
-    dodge: 0, burn: 0,
-    vibrance: 0, dehaze: 0, 'shadow-recovery': 0, 'highlight-recovery': 0, 'color-temp': 0,
-    'glow-sigma': 0, halftone: 0, 'oil-radius': 0, chromatic: 0, noise: 0,
-    'motion-angle': 0, 'motion-dist': 0,
-  };
-  for (const [id, val] of Object.entries(defaults)) {
-    const el = document.getElementById(id);
-    if (el) el.value = val;
-  }
-  for (const id of ['grayscale','invert','equalize','edge','posterize-on','threshold-on','solarize-on','dither-on','denoise-on','flip-x','flip-y','polar-on']) {
-    const el = document.getElementById(id);
-    if (el) el.checked = false;
-  }
-  document.getElementById('auto-mode').value = '';
-  document.getElementById('dodge-range').value = 'midtones';
-  document.getElementById('burn-range').value = 'midtones';
-  ['posterize-ctrl','threshold-ctrl','solarize-ctrl','dither-ctrl','denoise-ctrl'].forEach(id => {
-    document.getElementById(id).style.display = 'none';
-  });
-  updateAllLabels();
-  scheduleProcess();
+document.getElementById('btn-reset').addEventListener('click', () => resetControls(true));
+
+document.querySelectorAll('[data-preset]').forEach(btn => {
+  btn.addEventListener('click', () => applyPreset(btn.dataset.preset));
 });
 
 // ─── Tabs ──────────────────────────────────────────────────────────
 document.querySelectorAll('.tab').forEach(tab => {
   tab.addEventListener('click', () => {
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    tab.classList.add('active');
+    syncActiveTab(tab.dataset.tab);
     state.outputTab = tab.dataset.tab;
+    if (state.outputTab !== 'canvas2d' && state.compareEnabled) {
+      state.compareEnabled = false;
+      compareToggle.checked = false;
+      updateCompareMode();
+    }
     scheduleProcess();
   });
+});
+
+compareToggle.addEventListener('change', () => {
+  state.compareEnabled = compareToggle.checked;
+  if (state.compareEnabled) {
+    state.outputTab = 'canvas2d';
+    syncActiveTab('canvas2d');
+  }
+  updateCompareMode();
+  if (state.sourcePix) scheduleProcess();
+});
+
+compareRange.addEventListener('input', () => {
+  state.compareSplit = parseInt(compareRange.value, 10);
+  updateCompareMode();
 });
 
 // ─── Section collapse ──────────────────────────────────────────────
