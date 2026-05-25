@@ -14,6 +14,8 @@ func EffectNames() []string {
 		// Filters & effects
 		"pixelate", "posterize", "threshold", "equalize", "tonemap", "dither",
 		"emboss", "vignette", "noise_reduction", "denoise", "bilateral",
+		"filter", "modern_filter", "cinematic", "teal_orange", "matte", "noir", "lomo", "chrome", "fade", "punch",
+		"golden_hour", "moody", "clean", "portrait", "cyberpunk",
 		// Color tools
 		"levels", "curves", "channel_mix", "color_balance", "hsl_selective",
 		"gradient_map", "color_temperature", "tint", "whitebalance", "wb",
@@ -31,7 +33,8 @@ func EffectNames() []string {
 		// Seam carving
 		"seam_carve",
 		// Auto
-		"auto_contrast", "auto_color", "auto_brightness", "auto_vibrance", "auto_full",
+		"auto_contrast", "auto_color", "auto_brightness", "auto_vibrance", "auto_exposure",
+		"auto_tone", "smart_enhance", "auto_scene", "auto_full",
 		// Composition
 		"edge", "watermark", "collage", "text", "apply",
 		// ImageMagick-inspired

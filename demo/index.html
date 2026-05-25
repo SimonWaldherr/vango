@@ -797,6 +797,36 @@ canvas.active { display: block; }
       </div>
     </div>
 
+    <!-- Modern Looks -->
+    <div class="section">
+      <div class="section-header">Modern Looks</div>
+      <div class="section-body">
+        <div class="ctrl">
+          <label>Look</label>
+          <select id="modern-filter">
+            <option value="">None</option>
+            <option value="cinematic">Cinematic</option>
+            <option value="teal_orange">Teal Orange</option>
+            <option value="matte">Matte</option>
+            <option value="noir">Noir</option>
+            <option value="lomo">Lomo</option>
+            <option value="chrome">Chrome</option>
+            <option value="fade">Fade</option>
+            <option value="punch">Punch</option>
+            <option value="golden_hour">Golden Hour</option>
+            <option value="moody">Moody</option>
+            <option value="clean">Clean</option>
+            <option value="portrait">Portrait</option>
+            <option value="cyberpunk">Cyberpunk</option>
+          </select>
+        </div>
+        <div class="ctrl" data-cmd="modern-intensity" data-default="0.85">
+          <label>Intensity <span class="val" id="lbl-modern-intensity">0.85</span></label>
+          <input type="range" id="modern-intensity" min="0" max="1" step="0.01" value="0.85">
+        </div>
+      </div>
+    </div>
+
     <!-- Auto Modes -->
     <div class="section">
       <div class="section-header">Auto Enhance</div>
@@ -808,6 +838,10 @@ canvas.active { display: block; }
             <option value="auto_brightness">Auto Brightness</option>
             <option value="auto_contrast">Auto Contrast</option>
             <option value="auto_vibrance">Auto Vibrance</option>
+            <option value="auto_exposure">Auto Exposure</option>
+            <option value="auto_tone">Auto Tone</option>
+            <option value="smart_enhance">Smart Enhance</option>
+            <option value="auto_scene">Auto Scene</option>
             <option value="auto_color">Auto Color</option>
             <option value="auto_full">Auto Full (all)</option>
             <option value="whitebalance">White Balance</option>
@@ -1161,6 +1195,11 @@ function buildCommands() {
   if (document.getElementById('dither-on').checked)    cmds.push(`dither ${document.getElementById('dither').value}`);
   if (document.getElementById('denoise-on').checked)   cmds.push(`noise_reduction ${document.getElementById('denoise').value}`);
 
+  // Modern look
+  const modern = document.getElementById('modern-filter').value;
+  const modernIntensity = parseFloat(document.getElementById('modern-intensity').value);
+  if (modern && modernIntensity > 0.005) cmds.push(`filter ${modern} ${modernIntensity.toFixed(2)}`);
+
   // Auto mode
   const am = document.getElementById('auto-mode').value;
   if (am) cmds.push(am);
@@ -1352,7 +1391,7 @@ function resetControls(shouldProcess = true) {
     dodge: 0, burn: 0,
     vibrance: 0, dehaze: 0, 'shadow-recovery': 0, 'highlight-recovery': 0, 'color-temp': 0,
     'glow-sigma': 0, halftone: 0, 'oil-radius': 0, chromatic: 0, noise: 0,
-    'motion-angle': 0, 'motion-dist': 0,
+    'motion-angle': 0, 'motion-dist': 0, 'modern-intensity': 0.85,
   };
   for (const [id, val] of Object.entries(defaults)) setControlValue(id, val);
   for (const id of ['grayscale','invert','equalize','edge','posterize-on','threshold-on','solarize-on','dither-on','denoise-on','flip-x','flip-y','polar-on']) {
@@ -1360,6 +1399,7 @@ function resetControls(shouldProcess = true) {
   }
   extraCmds.value = '';
   document.getElementById('auto-mode').value = '';
+  document.getElementById('modern-filter').value = '';
   document.getElementById('dodge-range').value = 'midtones';
   document.getElementById('burn-range').value = 'midtones';
   ['posterize-ctrl','threshold-ctrl','solarize-ctrl','dither-ctrl','denoise-ctrl'].forEach(id => {
@@ -1379,10 +1419,8 @@ function applyPreset(name) {
       setControlValue('sharpen', 0.45);
     },
     cinematic: () => {
-      setControlValue('contrast', 1.22);
-      setControlValue('saturation', 0.86);
-      setControlValue('vignette', 0.28);
-      setControlValue('color-temp', 16);
+      setControlValue('modern-filter', 'cinematic');
+      setControlValue('modern-intensity', 0.85);
       setControlValue('shadow-recovery', 0.18);
       setControlValue('highlight-recovery', 0.12);
     },
@@ -1679,6 +1717,24 @@ const commandExamples = {
   statistic: 'statistic median 2',
   mean_shift: 'mean_shift 5 0.15',
   kuwahara: 'kuwahara 3',
+  filter: 'filter cinematic 0.85',
+  cinematic: 'cinematic 0.85',
+  teal_orange: 'teal_orange 0.8',
+  matte: 'matte 0.8',
+  noir: 'noir 1',
+  lomo: 'lomo 0.75',
+  chrome: 'chrome 0.75',
+  fade: 'fade 0.7',
+  punch: 'punch 0.8',
+  golden_hour: 'golden_hour 0.8',
+  moody: 'moody 0.75',
+  clean: 'clean 0.7',
+  portrait: 'portrait 0.75',
+  cyberpunk: 'cyberpunk 0.8',
+  auto_exposure: 'auto_exposure',
+  auto_tone: 'auto_tone',
+  smart_enhance: 'smart_enhance',
+  auto_scene: 'auto_scene',
 };
 
 function appendExtraCommand(cmd) {

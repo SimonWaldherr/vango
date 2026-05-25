@@ -32,6 +32,16 @@ go build -o vango-cli ./cmd
 # full auto enhance (whitebalance + noise reduction + auto contrast/brightness/vibrance)
 ./vango-cli -in demo.jpg -out demo.auto_full.jpg -cmds "auto_full"
 
+# smart one-shot enhancement and exposure/tone automation
+./vango-cli -in demo.jpg -out demo.smart.jpg -cmds "smart_enhance"
+./vango-cli -in demo.jpg -out demo.scene.jpg -cmds "auto_scene"
+./vango-cli -in demo.jpg -out demo.tone.jpg -cmds "auto_tone"
+./vango-cli -in demo.jpg -out demo.exposure.jpg -cmds "auto_exposure"
+
+# modern color looks (direct aliases or generic filter command)
+./vango-cli -in demo.jpg -out demo.cinematic.jpg -cmds "cinematic 0.85"
+./vango-cli -in demo.jpg -out demo.noir.jpg -cmds "filter noir 1.0"
+
 # noise reduction (median filter, radius=1 gives 3×3 window, radius=2 gives 5×5, etc.)
 ./vango-cli -in demo.jpg -out demo.denoised.jpg -cmds "noise_reduction 1"
 
@@ -260,6 +270,8 @@ The `.vango` project format preserves:
 - `charcoal [radius] [sigma]` — charcoal sketch effect
 - `sketch [sigma] [angle]` — pencil sketch
 - `kuwahara [radius]` — Kuwahara edge-preserving filter
+- `filter <cinematic|teal_orange|matte|noir|lomo|chrome|fade|punch|golden_hour|moody|clean|portrait|cyberpunk> [intensity]`
+- direct aliases: `cinematic`, `teal_orange`, `matte`, `noir`, `lomo`, `chrome`, `fade`, `punch`, `golden_hour`, `moody`, `clean`, `portrait`, `cyberpunk`
 
 ### Retouching
 - `dodge <amount> [shadows|midtones|highlights]`
@@ -269,6 +281,10 @@ The `.vango` project format preserves:
 - `auto_contrast`
 - `auto_brightness`
 - `auto_vibrance`
+- `auto_exposure` — percentile-based luminance stretch
+- `auto_tone` — white balance + auto exposure + shadow/highlight recovery
+- `smart_enhance` — balanced auto tone + vibrance + clarity
+- `auto_scene` / `smart_auto` — adaptive auto mode based on exposure, saturation, and dynamic range
 - `auto_color` — white balance + equalize + auto brightness + auto vibrance
 - `auto_full` — full auto enhance
 - `auto_level` — per-channel histogram stretch (alias: `normalize`)

@@ -75,6 +75,10 @@ func TestApplyCommandAutoModes(t *testing.T) {
 	for _, cmd := range []string{
 		"autocontrast",
 		"auto_brightness",
+		"auto_exposure",
+		"auto_tone",
+		"smart_enhance",
+		"auto_scene",
 		"autovibrance",
 		"auto_color",
 	} {
@@ -83,6 +87,35 @@ func TestApplyCommandAutoModes(t *testing.T) {
 	out := p.Image()
 	if got := out.Bounds().Size(); got.X != 12 || got.Y != 8 {
 		t.Fatalf("auto modes must preserve image size: %v", got)
+	}
+}
+
+func TestApplyCommandModernFilters(t *testing.T) {
+	img := image.NewNRGBA(image.Rect(0, 0, 20, 12))
+	for y := 0; y < 12; y++ {
+		for x := 0; x < 20; x++ {
+			img.Set(x, y, color.NRGBA{R: uint8(40 + x*6), G: uint8(80 + y*8), B: 140, A: 255})
+		}
+	}
+	for _, cmd := range []string{
+		"filter cinematic 0.8",
+		"teal_orange 0.7",
+		"matte",
+		"noir 1",
+		"lomo 0.6",
+		"chrome 0.6",
+		"fade 0.6",
+		"punch 0.6",
+		"golden_hour 0.6",
+		"moody 0.6",
+		"clean 0.6",
+		"portrait 0.6",
+		"cyberpunk 0.6",
+	} {
+		out := applyCommand(vango.From(img), cmd).Image()
+		if got := out.Bounds().Size(); got.X != 20 || got.Y != 12 {
+			t.Fatalf("command %q changed image size: %v", cmd, got)
+		}
 	}
 }
 

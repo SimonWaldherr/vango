@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"image"
 	"image/color"
-	"math"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -35,91 +34,6 @@ func parseIntArg(s string, fallback int) int {
 		return fallback
 	}
 	return v
-}
-
-func smartCropRect(b image.Rectangle, outW, outH int) image.Rectangle {
-	if outW <= 0 || outH <= 0 || b.Empty() {
-		return b
-	}
-	srcW := b.Dx()
-	srcH := b.Dy()
-	target := float64(outW) / float64(outH)
-	srcAspect := float64(srcW) / float64(srcH)
-
-	cropW, cropH := srcW, srcH
-	if srcAspect > target {
-		cropW = int(math.Round(float64(srcH) * target))
-	} else if srcAspect < target {
-		cropH = int(math.Round(float64(srcW) / target))
-	}
-	if cropW < 1 {
-		cropW = 1
-	}
-	if cropH < 1 {
-		cropH = 1
-	}
-	x0 := b.Min.X + (srcW-cropW)/2
-	y0 := b.Min.Y + (srcH-cropH)/2
-	return image.Rect(x0, y0, x0+cropW, y0+cropH)
-}
-
-// autoBrightnessDelta targets mid-gray average luma (0.5), clamped to +/-0.3.
-func autoBrightnessDelta(n *image.NRGBA) float64 {
-	var sum float64
-	var cnt int
-	for i := 0; i+3 < len(n.Pix); i += 4 {
-		if n.Pix[i+3] == 0 {
-			continue
-		}
-		l := (0.2126*float64(n.Pix[i+0]) + 0.7152*float64(n.Pix[i+1]) + 0.0722*float64(n.Pix[i+2])) / 255.0
-		sum += l
-		cnt++
-	}
-	if cnt == 0 {
-		return 0
-	}
-	delta := 0.5 - (sum / float64(cnt))
-	if delta > 0.3 {
-		return 0.3
-	}
-	if delta < -0.3 {
-		return -0.3
-	}
-	return delta
-}
-
-// autoVibranceFactor raises average saturation toward ~0.55, capped at 1.8x.
-func autoVibranceFactor(n *image.NRGBA) float64 {
-	var satSum float64
-	var cnt int
-	for i := 0; i+3 < len(n.Pix); i += 4 {
-		if n.Pix[i+3] == 0 {
-			continue
-		}
-		rf := float64(n.Pix[i+0]) / 255.0
-		gf := float64(n.Pix[i+1]) / 255.0
-		bf := float64(n.Pix[i+2]) / 255.0
-		mx := math.Max(rf, math.Max(gf, bf))
-		mn := math.Min(rf, math.Min(gf, bf))
-		s := 0.0
-		if mx > 0 {
-			s = (mx - mn) / mx
-		}
-		satSum += s
-		cnt++
-	}
-	if cnt == 0 {
-		return 1
-	}
-	avgSat := satSum / float64(cnt)
-	if avgSat >= 0.55 {
-		return 1
-	}
-	factor := 1 + (0.55-avgSat)*1.2
-	if factor > 1.8 {
-		return 1.8
-	}
-	return factor
 }
 
 // parseHexColor parses a hex color string like "RRGGBB" or "RRGGBBAA" into color.NRGBA.
@@ -248,9 +162,7 @@ func applyCommand(p *vango.Pipeline, raw string) *vango.Pipeline {
 		if len(args) >= 2 {
 			w := parseIntArg(args[0], 1)
 			h := parseIntArg(args[1], 1)
-			b := p.Image().Bounds()
-			rect := smartCropRect(b, w, h)
-			p = p.Crop(rect).ResizeBilinear(w, h)
+			p = p.SmartCrop(w, h)
 		}
 	case "trim":
 		p = p.Trim(color.NRGBA{255, 255, 255, 255}, 8)
@@ -289,27 +201,29 @@ func applyCommand(p *vango.Pipeline, raw string) *vango.Pipeline {
 	case "autocontrast", "auto_contrast":
 		p = p.Equalize()
 	case "autobrightness", "auto_brightness":
-		n := vango.ToNRGBA(p.Image())
-		p = vango.From(n).Brightness(autoBrightnessDelta(n))
+		p = p.AutoBrightness()
 	case "autovibrance", "auto_vibrance":
-		n := vango.ToNRGBA(p.Image())
-		p = vango.From(n).Saturation(autoVibranceFactor(n))
+		p = p.AutoVibrance()
+	case "autoexposure", "auto_exposure":
+		p = p.AutoExposure()
+	case "autotone", "auto_tone":
+		p = p.AutoTone()
+	case "smartenhance", "smart_enhance":
+		p = p.SmartEnhance()
+	case "autoscene", "auto_scene", "smartauto", "smart_auto":
+		p = p.AutoScene()
 	case "autocolor", "auto_color":
 		p = p.WhiteBalance(emptyRect())
 		p = p.Equalize()
-		n := vango.ToNRGBA(p.Image())
-		p = vango.From(n).Brightness(autoBrightnessDelta(n))
-		brightnessAdjusted := p.Image()
-		p = vango.From(brightnessAdjusted).Saturation(autoVibranceFactor(brightnessAdjusted))
+		p = p.AutoBrightness()
+		p = p.AutoVibrance()
 	case "autofull", "auto_full", "autoenhance", "auto_enhance":
 		// Full auto: white balance + noise reduction + auto contrast + auto brightness + auto vibrance
 		p = p.WhiteBalance(emptyRect())
 		p = p.NoiseReduction(1)
 		p = p.Equalize()
-		n := vango.ToNRGBA(p.Image())
-		p = vango.From(n).Brightness(autoBrightnessDelta(n))
-		brightnessAdjusted := p.Image()
-		p = vango.From(brightnessAdjusted).Saturation(autoVibranceFactor(brightnessAdjusted))
+		p = p.AutoBrightness()
+		p = p.AutoVibrance()
 	case "noisereduction", "noise_reduction", "denoise":
 		radius := 1
 		if len(args) >= 1 {
@@ -348,6 +262,21 @@ func applyCommand(p *vango.Pipeline, raw string) *vango.Pipeline {
 		}
 	case "edge", "edgedetect", "edge_detect":
 		p = vango.From(vango.SobelEdges(p.Image()))
+	case "filter", "modern_filter":
+		if len(args) >= 1 {
+			intensity := 1.0
+			if len(args) >= 2 {
+				intensity = parseFloatArg(args[1], 1)
+			}
+			p = p.ModernFilter(args[0], intensity)
+		}
+	case "cinematic", "teal_orange", "tealorange", "matte", "noir", "lomo", "chrome", "fade", "punch",
+		"golden_hour", "goldenhour", "moody", "clean", "portrait", "cyberpunk":
+		intensity := 1.0
+		if len(args) >= 1 {
+			intensity = parseFloatArg(args[0], 1)
+		}
+		p = p.ModernFilter(name, intensity)
 	case "sharpen":
 		amount := 1.0
 		if len(args) >= 1 {
@@ -951,7 +880,6 @@ func main() {
 			return
 		}
 	}
-
 
 	// Save flat output based on extension
 	outFile, err := os.Create(*outPath)
