@@ -242,7 +242,7 @@ func SmartCrop(src image.Image, outW, outH int) *image.NRGBA {
 
 // ModernFilter applies named contemporary color looks. Supported names include:
 // cinematic, teal_orange, matte, noir, lomo, chrome, fade, punch, golden_hour,
-// moody, clean, portrait, and cyberpunk.
+// moody, clean, portrait, cyberpunk, aurora, desert, midnight, candy, and emerald.
 func ModernFilter(src image.Image, name string, intensity float64) *image.NRGBA {
 	if intensity <= 0 {
 		return ToNRGBA(src)
@@ -264,7 +264,7 @@ func ModernFilter(src image.Image, name string, intensity float64) *image.NRGBA 
 	switch name {
 	case "cinematic", "lomo":
 		out = Vignette(out, 0.25*intensity)
-	case "noir":
+	case "noir", "midnight":
 		out = Vignette(out, 0.18*intensity)
 	}
 	return out
@@ -275,6 +275,7 @@ func ModernFilterNames() []string {
 	return []string{
 		"cinematic", "teal_orange", "matte", "noir", "lomo", "chrome", "fade",
 		"punch", "golden_hour", "moody", "clean", "portrait", "cyberpunk",
+		"aurora", "desert", "midnight", "candy", "emerald",
 	}
 }
 
@@ -458,6 +459,36 @@ func applyModernLook(r, g, b uint8, name string, intensity float64) (uint8, uint
 		h, s, l = rgbToHSL(rf, gf, bf)
 		s = clampF01(s * (1 + 0.38*intensity))
 		l = contrastLightness(l, 1+0.22*intensity)
+	case "aurora":
+		rf, gf, bf = splitTone(rf, gf, bf, [3]float64{0.04, 0.00, 0.20}, [3]float64{0.00, 0.30, 0.18}, 0.42*intensity)
+		h, s, l = rgbToHSL(rf, gf, bf)
+		h = math.Mod(h+0.018*intensity, 1)
+		s = clampF01(s * (1 + 0.24*intensity))
+		l = contrastLightness(l, 1+0.12*intensity)
+	case "desert":
+		rf, gf, bf = splitTone(rf, gf, bf, [3]float64{0.10, 0.04, 0.00}, [3]float64{0.34, 0.20, 0.05}, 0.36*intensity)
+		h, s, l = rgbToHSL(rf, gf, bf)
+		h = math.Mod(h-0.018*intensity+1, 1)
+		s = clampF01(s * (1 - 0.08*intensity))
+		l = clampF01(0.035*intensity + l*(1-0.05*intensity))
+	case "midnight":
+		rf, gf, bf = splitTone(rf, gf, bf, [3]float64{0.00, 0.02, 0.20}, [3]float64{0.05, 0.08, 0.18}, 0.40*intensity)
+		h, s, l = rgbToHSL(rf, gf, bf)
+		s = clampF01(s * (1 - 0.18*intensity))
+		l = contrastLightness(l, 1+0.34*intensity)
+		l = clampF01(l - 0.035*intensity)
+	case "candy":
+		rf, gf, bf = splitTone(rf, gf, bf, [3]float64{0.12, 0.00, 0.10}, [3]float64{0.22, 0.08, 0.20}, 0.28*intensity)
+		h, s, l = rgbToHSL(rf, gf, bf)
+		h = math.Mod(h+0.035*intensity, 1)
+		s = clampF01(s * (1 + 0.30*intensity))
+		l = clampF01(l + 0.055*intensity)
+	case "emerald":
+		rf, gf, bf = splitTone(rf, gf, bf, [3]float64{0.00, 0.14, 0.10}, [3]float64{0.08, 0.22, 0.10}, 0.34*intensity)
+		h, s, l = rgbToHSL(rf, gf, bf)
+		h = math.Mod(h+0.012*intensity, 1)
+		s = clampF01(s * (1 + 0.14*intensity))
+		l = contrastLightness(l, 1+0.14*intensity)
 	default:
 		return r, g, b
 	}

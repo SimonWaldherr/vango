@@ -16,6 +16,7 @@ func EffectNames() []string {
 		"emboss", "vignette", "noise_reduction", "denoise", "bilateral",
 		"filter", "modern_filter", "cinematic", "teal_orange", "matte", "noir", "lomo", "chrome", "fade", "punch",
 		"golden_hour", "moody", "clean", "portrait", "cyberpunk",
+		"aurora", "desert", "midnight", "candy", "emerald",
 		// Color tools
 		"levels", "curves", "channel_mix", "color_balance", "hsl_selective",
 		"gradient_map", "color_temperature", "tint", "whitebalance", "wb",
@@ -23,6 +24,7 @@ func EffectNames() []string {
 		"motion_blur", "radial_blur", "tilt_shift",
 		// Artistic
 		"glow", "halftone", "oil_painting", "chromatic_aberration", "add_noise",
+		"dreamscape", "vhs", "light_leak", "kaleidoscope",
 		// Distortion
 		"twirl", "spherize", "wave", "ripple", "polar_coordinates", "pinch",
 		// Retouching
