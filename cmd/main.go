@@ -271,7 +271,7 @@ func applyCommand(p *vango.Pipeline, raw string) *vango.Pipeline {
 			p = p.ModernFilter(args[0], intensity)
 		}
 	case "cinematic", "teal_orange", "tealorange", "matte", "noir", "lomo", "chrome", "fade", "punch",
-		"golden_hour", "goldenhour", "moody", "clean", "portrait", "cyberpunk":
+		"golden_hour", "goldenhour", "moody", "clean", "portrait", "cyberpunk", "dreamscape", "sunset", "forest", "infrared":
 		intensity := 1.0
 		if len(args) >= 1 {
 			intensity = parseFloatArg(args[0], 1)

@@ -242,7 +242,7 @@ func SmartCrop(src image.Image, outW, outH int) *image.NRGBA {
 
 // ModernFilter applies named contemporary color looks. Supported names include:
 // cinematic, teal_orange, matte, noir, lomo, chrome, fade, punch, golden_hour,
-// moody, clean, portrait, and cyberpunk.
+// moody, clean, portrait, cyberpunk, dreamscape, sunset, forest, and infrared.
 func ModernFilter(src image.Image, name string, intensity float64) *image.NRGBA {
 	if intensity <= 0 {
 		return ToNRGBA(src)
@@ -262,7 +262,7 @@ func ModernFilter(src image.Image, name string, intensity float64) *image.NRGBA 
 		}
 	})
 	switch name {
-	case "cinematic", "lomo":
+	case "cinematic", "lomo", "dreamscape":
 		out = Vignette(out, 0.25*intensity)
 	case "noir":
 		out = Vignette(out, 0.18*intensity)
@@ -275,6 +275,7 @@ func ModernFilterNames() []string {
 	return []string{
 		"cinematic", "teal_orange", "matte", "noir", "lomo", "chrome", "fade",
 		"punch", "golden_hour", "moody", "clean", "portrait", "cyberpunk",
+		"dreamscape", "sunset", "forest", "infrared",
 	}
 }
 
@@ -458,6 +459,32 @@ func applyModernLook(r, g, b uint8, name string, intensity float64) (uint8, uint
 		h, s, l = rgbToHSL(rf, gf, bf)
 		s = clampF01(s * (1 + 0.38*intensity))
 		l = contrastLightness(l, 1+0.22*intensity)
+	case "dreamscape":
+		rf, gf, bf = splitTone(rf, gf, bf, [3]float64{0.12, 0.02, 0.18}, [3]float64{0.06, 0.14, 0.22}, 0.38*intensity)
+		h, s, l = rgbToHSL(rf, gf, bf)
+		h = math.Mod(h+0.035*intensity, 1)
+		s = clampF01(s * (1 + 0.20*intensity))
+		l = clampF01(0.055*intensity + l*(1-0.08*intensity))
+	case "sunset":
+		rf, gf, bf = splitTone(rf, gf, bf, [3]float64{0.10, 0.03, 0.00}, [3]float64{0.38, 0.16, -0.04}, 0.36*intensity)
+		h, s, l = rgbToHSL(rf, gf, bf)
+		h = math.Mod(h-0.018*intensity+1, 1)
+		s = clampF01(s * (1 + 0.18*intensity))
+		l = clampF01(l + 0.025*intensity)
+	case "forest":
+		rf, gf, bf = splitTone(rf, gf, bf, [3]float64{-0.02, 0.12, 0.05}, [3]float64{0.10, 0.16, 0.02}, 0.34*intensity)
+		h, s, l = rgbToHSL(rf, gf, bf)
+		h = math.Mod(h+0.018*intensity, 1)
+		s = clampF01(s * (1 + 0.10*intensity))
+		l = contrastLightness(l, 1+0.14*intensity)
+	case "infrared":
+		lum := 0.38*rf + 0.50*gf + 0.12*bf
+		rf = clampF01(0.18 + lum*1.05)
+		gf = clampF01(0.08 + (1-lum)*0.22 + gf*0.12)
+		bf = clampF01(0.12 + (1-lum)*0.42)
+		h, s, l = rgbToHSL(rf, gf, bf)
+		s = clampF01(s * (1 + 0.30*intensity))
+		l = contrastLightness(l, 1+0.18*intensity)
 	default:
 		return r, g, b
 	}

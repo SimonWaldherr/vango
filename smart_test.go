@@ -93,6 +93,10 @@ func TestModernFilterNamesIncludesNewLooks(t *testing.T) {
 		"clean":       false,
 		"portrait":    false,
 		"cyberpunk":   false,
+		"dreamscape":  false,
+		"sunset":      false,
+		"forest":      false,
+		"infrared":    false,
 	}
 	for _, name := range names {
 		if _, ok := want[name]; ok {
@@ -103,5 +107,22 @@ func TestModernFilterNamesIncludesNewLooks(t *testing.T) {
 		if !ok {
 			t.Fatalf("ModernFilterNames missing %q in %v", name, names)
 		}
+	}
+}
+
+func TestNewCreativeModernFiltersChangePixels(t *testing.T) {
+	img := image.NewNRGBA(image.Rect(0, 0, 1, 1))
+	img.Set(0, 0, color.NRGBA{R: 90, G: 140, B: 180, A: 177})
+
+	for _, name := range []string{"dreamscape", "sunset", "forest", "infrared"} {
+		t.Run(name, func(t *testing.T) {
+			out := ModernFilter(img, name, 1)
+			if out.Pix[3] != 177 {
+				t.Fatalf("%s should preserve alpha, got %d", name, out.Pix[3])
+			}
+			if out.Pix[0] == img.Pix[0] && out.Pix[1] == img.Pix[1] && out.Pix[2] == img.Pix[2] {
+				t.Fatalf("%s did not alter pixel", name)
+			}
+		})
 	}
 }

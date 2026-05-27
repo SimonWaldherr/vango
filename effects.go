@@ -15,7 +15,7 @@ func EffectNames() []string {
 		"pixelate", "posterize", "threshold", "equalize", "tonemap", "dither",
 		"emboss", "vignette", "noise_reduction", "denoise", "bilateral",
 		"filter", "modern_filter", "cinematic", "teal_orange", "matte", "noir", "lomo", "chrome", "fade", "punch",
-		"golden_hour", "moody", "clean", "portrait", "cyberpunk",
+		"golden_hour", "moody", "clean", "portrait", "cyberpunk", "dreamscape", "sunset", "forest", "infrared",
 		// Color tools
 		"levels", "curves", "channel_mix", "color_balance", "hsl_selective",
 		"gradient_map", "color_temperature", "tint", "whitebalance", "wb",
