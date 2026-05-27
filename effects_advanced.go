@@ -1104,7 +1104,7 @@ func (p *Pipeline) VHSGlitch(amount float64) *Pipeline {
 }
 
 func (p *Pipeline) LightLeak(cx, cy, radius, intensity float64) *Pipeline {
-	p.steps = append(p.steps, step{name: "lightLeak", apply: func(_ context.Context, in *image.NRGBA) *image.NRGBA {
+	p.steps = append(p.steps, step{name: "light_leak", apply: func(_ context.Context, in *image.NRGBA) *image.NRGBA {
 		return LightLeak(in, cx, cy, radius, intensity)
 	}})
 	return p
