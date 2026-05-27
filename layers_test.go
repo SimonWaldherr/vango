@@ -347,6 +347,31 @@ func TestBilateralFilter(t *testing.T) {
 	}
 }
 
+func TestCreativeEffectsPreserveSizeAndAlpha(t *testing.T) {
+	img := testImage(32, 24)
+	for i := 3; i < len(img.Pix); i += 4 {
+		img.Pix[i] = 180
+	}
+	effects := []struct {
+		name string
+		out  *image.NRGBA
+	}{
+		{"dreamscape", Dreamscape(img, 2, 0.8)},
+		{"vhs", VHSGlitch(img, 0.6)},
+		{"light_leak", LightLeak(img, 0.1, 0.2, 0.7, 0.8)},
+		{"kaleidoscope", Kaleidoscope(img, 6)},
+	}
+	for _, e := range effects {
+		if e.out.Rect != img.Rect {
+			t.Fatalf("%s changed size", e.name)
+		}
+		p := idx(e.out, 8, 8)
+		if e.out.Pix[p+3] != 180 {
+			t.Fatalf("%s changed alpha to %d", e.name, e.out.Pix[p+3])
+		}
+	}
+}
+
 func TestHSLSelective(t *testing.T) {
 	img := testImage(50, 50)
 	out := HSLSelective(img, 0, 30, 1.5, 0.1)
@@ -401,7 +426,8 @@ func TestEffectNamesContainsNew(t *testing.T) {
 	names := EffectNames()
 	want := []string{"sharpen", "clarity", "levels", "motion_blur", "glow", "halftone",
 		"oil_painting", "chromatic_aberration", "bilateral", "tilt_shift", "color_temperature",
-		"flip_x", "flip_y"}
+		"flip_x", "flip_y", "dreamscape", "vhs", "light_leak", "kaleidoscope",
+		"aurora", "desert", "midnight", "candy", "emerald"}
 	nameSet := make(map[string]bool)
 	for _, n := range names {
 		nameSet[n] = true

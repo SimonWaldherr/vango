@@ -93,6 +93,11 @@ func TestModernFilterNamesIncludesNewLooks(t *testing.T) {
 		"clean":       false,
 		"portrait":    false,
 		"cyberpunk":   false,
+		"aurora":      false,
+		"desert":      false,
+		"midnight":    false,
+		"candy":       false,
+		"emerald":     false,
 	}
 	for _, name := range names {
 		if _, ok := want[name]; ok {

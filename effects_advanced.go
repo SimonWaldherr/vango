@@ -797,6 +797,155 @@ func BilateralFilter(src image.Image, sigmaSpatial, sigmaRange float64) *image.N
 }
 
 // --------------------------------------------------------------------------
+// Creative effects
+// --------------------------------------------------------------------------
+
+// Dreamscape adds a soft pastel glow while preserving image detail.
+func Dreamscape(src image.Image, blurSigma, intensity float64) *image.NRGBA {
+	if blurSigma <= 0 {
+		blurSigma = 4
+	}
+	intensity = clampF01(intensity)
+	if intensity == 0 {
+		return ToNRGBA(src)
+	}
+	n := ToNRGBA(src)
+	blurred := GaussianBlur(n, blurSigma, 0)
+	rect := n.Rect
+	out := image.NewNRGBA(rect)
+	_ = parallelRows(context.Background(), 0, rect.Dy(), func(yy int) {
+		y := rect.Min.Y + yy
+		for x := rect.Min.X; x < rect.Max.X; x++ {
+			i := idx(n, x, y)
+			j := idx(blurred, x, y)
+			rf, gf, bf := float64(n.Pix[i+0])/255, float64(n.Pix[i+1])/255, float64(n.Pix[i+2])/255
+			h, s, l := rgbToHSL(rf, gf, bf)
+			s = clampF01(s * (1 + 0.22*intensity))
+			l = clampF01(l + 0.08*intensity)
+			rf, gf, bf = hslToRGB(h, s, l)
+			for c, v := range []float64{rf, gf, bf} {
+				soft := float64(blurred.Pix[j+c]) / 255
+				screen := 1 - (1-v)*(1-soft)
+				out.Pix[i+c] = clamp8(int(lerp(v, screen, 0.38*intensity)*255 + 0.5))
+			}
+			out.Pix[i+3] = n.Pix[i+3]
+		}
+	})
+	return out
+}
+
+// VHSGlitch applies chroma offsets, wavy horizontal drift, scanlines, and subtle noise.
+func VHSGlitch(src image.Image, amount float64) *image.NRGBA {
+	amount = clampF01(amount)
+	if amount == 0 {
+		return ToNRGBA(src)
+	}
+	n := ToNRGBA(src)
+	rect := n.Rect
+	out := image.NewNRGBA(rect)
+	chroma := int(math.Round(1 + 5*amount))
+	_ = parallelRows(context.Background(), 0, rect.Dy(), func(yy int) {
+		y := rect.Min.Y + yy
+		drift := int(math.Round(math.Sin(float64(y)*0.37)*3*amount + math.Sin(float64(y)*0.071)*7*amount))
+		scan := 1.0
+		if (y-rect.Min.Y)%4 == 0 {
+			scan -= 0.22 * amount
+		}
+		for x := rect.Min.X; x < rect.Max.X; x++ {
+			ri := idx(n, clampInt(x+drift+chroma, rect.Min.X, rect.Max.X-1), y)
+			gi := idx(n, clampInt(x+drift, rect.Min.X, rect.Max.X-1), y)
+			bi := idx(n, clampInt(x+drift-chroma, rect.Min.X, rect.Max.X-1), y)
+			oi := idx(out, x, y)
+			hash := (x*73856093 ^ y*19349663) & 1023
+			noise := (float64(hash)/1023 - 0.5) * 22 * amount
+			out.Pix[oi+0] = clamp8(int(float64(n.Pix[ri+0])*scan + noise + 0.5))
+			out.Pix[oi+1] = clamp8(int(float64(n.Pix[gi+1])*scan + noise + 0.5))
+			out.Pix[oi+2] = clamp8(int(float64(n.Pix[bi+2])*scan + noise + 0.5))
+			out.Pix[oi+3] = n.Pix[gi+3]
+		}
+	})
+	return out
+}
+
+// LightLeak overlays a warm radial film-burn flare.
+func LightLeak(src image.Image, cx, cy, radius, intensity float64) *image.NRGBA {
+	intensity = clampF01(intensity)
+	if intensity == 0 {
+		return ToNRGBA(src)
+	}
+	if radius <= 0 {
+		radius = 0.65
+	}
+	n := ToNRGBA(src)
+	rect := n.Rect
+	out := image.NewNRGBA(rect)
+	w, h := float64(rect.Dx()), float64(rect.Dy())
+	if w <= 0 || h <= 0 {
+		return out
+	}
+	if cx < 0 || cx > 1 {
+		cx = 0.12
+	}
+	if cy < 0 || cy > 1 {
+		cy = 0.18
+	}
+	centerX := float64(rect.Min.X) + cx*w
+	centerY := float64(rect.Min.Y) + cy*h
+	maxR := radius * math.Hypot(w, h)
+	_ = parallelRows(context.Background(), 0, rect.Dy(), func(yy int) {
+		y := rect.Min.Y + yy
+		for x := rect.Min.X; x < rect.Max.X; x++ {
+			i := idx(n, x, y)
+			d := math.Hypot(float64(x)-centerX, float64(y)-centerY) / maxR
+			flare := clampF01(1 - d)
+			flare = flare * flare * intensity
+			pink := clampF01(1 - math.Abs(d-0.55)*2)
+			overlay := [3]float64{255, lerp(118, 210, pink), lerp(42, 148, pink)}
+			for c := 0; c < 3; c++ {
+				out.Pix[i+c] = clamp8(int(lerp(float64(n.Pix[i+c]), overlay[c], flare) + 0.5))
+			}
+			out.Pix[i+3] = n.Pix[i+3]
+		}
+	})
+	return out
+}
+
+// Kaleidoscope folds the image around the center into mirrored radial sectors.
+func Kaleidoscope(src image.Image, sectors int) *image.NRGBA {
+	if sectors < 2 {
+		sectors = 8
+	}
+	n := ToNRGBA(src)
+	rect := n.Rect
+	out := image.NewNRGBA(rect)
+	cx := float64(rect.Min.X+rect.Max.X-1) / 2
+	cy := float64(rect.Min.Y+rect.Max.Y-1) / 2
+	sector := 2 * math.Pi / float64(sectors)
+	_ = parallelRows(context.Background(), 0, rect.Dy(), func(yy int) {
+		y := rect.Min.Y + yy
+		for x := rect.Min.X; x < rect.Max.X; x++ {
+			dx := float64(x) - cx
+			dy := float64(y) - cy
+			r := math.Hypot(dx, dy)
+			a := math.Mod(math.Atan2(dy, dx)+2*math.Pi, 2*math.Pi)
+			a = math.Mod(a, sector)
+			if a > sector/2 {
+				a = sector - a
+			}
+			sx := clampInt(int(math.Round(cx+math.Cos(a)*r)), rect.Min.X, rect.Max.X-1)
+			sy := clampInt(int(math.Round(cy+math.Sin(a)*r)), rect.Min.Y, rect.Max.Y-1)
+			si := idx(n, sx, sy)
+			oi := idx(out, x, y)
+			out.Pix[oi+0] = n.Pix[si+0]
+			out.Pix[oi+1] = n.Pix[si+1]
+			out.Pix[oi+2] = n.Pix[si+2]
+			out.Pix[oi+3] = n.Pix[si+3]
+		}
+	})
+	return out
+}
+
+// --------------------------------------------------------------------------
 // Pipeline methods for all new effects
 // --------------------------------------------------------------------------
 
@@ -936,6 +1085,34 @@ func (p *Pipeline) FlipY() *Pipeline {
 func (p *Pipeline) PerspectiveTransform(corners [4][2]float64, w, h int) *Pipeline {
 	p.steps = append(p.steps, step{name: "perspective", apply: func(_ context.Context, in *image.NRGBA) *image.NRGBA {
 		return PerspectiveTransform(in, corners, w, h)
+	}})
+	return p
+}
+
+func (p *Pipeline) Dreamscape(blurSigma, intensity float64) *Pipeline {
+	p.steps = append(p.steps, step{name: "dreamscape", apply: func(_ context.Context, in *image.NRGBA) *image.NRGBA {
+		return Dreamscape(in, blurSigma, intensity)
+	}})
+	return p
+}
+
+func (p *Pipeline) VHSGlitch(amount float64) *Pipeline {
+	p.steps = append(p.steps, step{name: "vhs", apply: func(_ context.Context, in *image.NRGBA) *image.NRGBA {
+		return VHSGlitch(in, amount)
+	}})
+	return p
+}
+
+func (p *Pipeline) LightLeak(cx, cy, radius, intensity float64) *Pipeline {
+	p.steps = append(p.steps, step{name: "light_leak", apply: func(_ context.Context, in *image.NRGBA) *image.NRGBA {
+		return LightLeak(in, cx, cy, radius, intensity)
+	}})
+	return p
+}
+
+func (p *Pipeline) Kaleidoscope(sectors int) *Pipeline {
+	p.steps = append(p.steps, step{name: "kaleidoscope", apply: func(_ context.Context, in *image.NRGBA) *image.NRGBA {
+		return Kaleidoscope(in, sectors)
 	}})
 	return p
 }
