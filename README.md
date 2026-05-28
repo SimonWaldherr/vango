@@ -41,6 +41,14 @@ go build -o vango-cli ./cmd
 # modern color looks (direct aliases or generic filter command)
 ./vango-cli -in demo.jpg -out demo.cinematic.jpg -cmds "cinematic 0.85"
 ./vango-cli -in demo.jpg -out demo.noir.jpg -cmds "filter noir 1.0"
+./vango-cli -in demo.jpg -out demo.aurora.jpg -cmds "aurora 0.8"
+./vango-cli -in demo.jpg -out demo.midnight.jpg -cmds "filter midnight 0.75"
+
+# creative effects
+./vango-cli -in demo.jpg -out demo.dreamscape.jpg -cmds "dreamscape 4 0.75"
+./vango-cli -in demo.jpg -out demo.vhs.jpg -cmds "vhs 0.65"
+./vango-cli -in demo.jpg -out demo.lightleak.jpg -cmds "light_leak 0.12 0.18 0.65 0.75"
+./vango-cli -in demo.jpg -out demo.kaleidoscope.jpg -cmds "kaleidoscope 8"
 
 # noise reduction (median filter, radius=1 gives 3×3 window, radius=2 gives 5×5, etc.)
 ./vango-cli -in demo.jpg -out demo.denoised.jpg -cmds "noise_reduction 1"
@@ -263,6 +271,10 @@ The `.vango` project format preserves:
 - `oil_painting <radius> <levels>`
 - `chromatic_aberration <shift>`
 - `add_noise <amount>`
+- `dreamscape [sigma] [intensity]` — soft pastel glow
+- `vhs [amount]` — scanlines, chroma drift, and analog noise
+- `light_leak [x] [y] [radius] [intensity]` — warm radial film burn
+- `kaleidoscope [sectors]` — mirrored radial fold
 - `dither <levels>` — Floyd–Steinberg dithering
 - `ordered_dither [levels]` — Bayer-matrix ordered dithering
 - `posterize <levels>`
@@ -270,8 +282,8 @@ The `.vango` project format preserves:
 - `charcoal [radius] [sigma]` — charcoal sketch effect
 - `sketch [sigma] [angle]` — pencil sketch
 - `kuwahara [radius]` — Kuwahara edge-preserving filter
-- `filter <cinematic|teal_orange|matte|noir|lomo|chrome|fade|punch|golden_hour|moody|clean|portrait|cyberpunk|dreamscape|sunset|forest|infrared> [intensity]`
-- direct aliases: `cinematic`, `teal_orange`, `matte`, `noir`, `lomo`, `chrome`, `fade`, `punch`, `golden_hour`, `moody`, `clean`, `portrait`, `cyberpunk`, `dreamscape`, `sunset`, `forest`, `infrared`
+- `filter <cinematic|teal_orange|matte|noir|lomo|chrome|fade|punch|golden_hour|moody|clean|portrait|cyberpunk|aurora|desert|midnight|candy|emerald|nebula|sunset|forest|twilight|pastel|infrared> [intensity]`
+- direct aliases: `cinematic`, `teal_orange`, `matte`, `noir`, `lomo`, `chrome`, `fade`, `punch`, `golden_hour`, `moody`, `clean`, `portrait`, `cyberpunk`, `aurora`, `desert`, `midnight`, `candy`, `emerald`, `nebula`, `sunset`, `forest`, `twilight`, `pastel`, `infrared`
 
 ### Retouching
 - `dodge <amount> [shadows|midtones|highlights]`

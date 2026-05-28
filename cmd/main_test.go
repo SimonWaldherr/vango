@@ -111,9 +111,41 @@ func TestApplyCommandModernFilters(t *testing.T) {
 		"clean 0.6",
 		"portrait 0.6",
 		"cyberpunk 0.6",
+		"aurora 0.6",
+		"desert 0.6",
+		"midnight 0.6",
+		"candy 0.6",
+		"emerald 0.6",
+		"nebula 0.6",
+		"sunset 0.6",
+		"forest 0.6",
+		"twilight 0.6",
+		"pastel 0.6",
+		"infrared 0.6",
 	} {
 		out := applyCommand(vango.From(img), cmd).Image()
 		if got := out.Bounds().Size(); got.X != 20 || got.Y != 12 {
+			t.Fatalf("command %q changed image size: %v", cmd, got)
+		}
+	}
+}
+
+func TestApplyCommandCreativeEffects(t *testing.T) {
+	img := image.NewNRGBA(image.Rect(0, 0, 24, 16))
+	for y := 0; y < 16; y++ {
+		for x := 0; x < 24; x++ {
+			img.Set(x, y, color.NRGBA{R: uint8(30 + x*8), G: uint8(45 + y*9), B: uint8(90 + x + y), A: 200})
+		}
+	}
+
+	for _, cmd := range []string{
+		"dreamscape 2 0.8",
+		"vhs 0.6",
+		"light_leak 0.1 0.2 0.7 0.8",
+		"kaleidoscope 6",
+	} {
+		out := applyCommand(vango.From(img), cmd).Image()
+		if got := out.Bounds().Size(); got.X != 24 || got.Y != 16 {
 			t.Fatalf("command %q changed image size: %v", cmd, got)
 		}
 	}

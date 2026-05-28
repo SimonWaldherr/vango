@@ -242,7 +242,9 @@ func applyCommand(p *vango.Pipeline, raw string) *vango.Pipeline {
 			p = p.ModernFilter(args[0], intensity)
 		}
 	case "cinematic", "teal_orange", "tealorange", "matte", "noir", "lomo", "chrome", "fade", "punch",
-		"golden_hour", "goldenhour", "moody", "clean", "portrait", "cyberpunk", "dreamscape", "sunset", "forest", "infrared":
+		"golden_hour", "goldenhour", "moody", "clean", "portrait", "cyberpunk",
+		"aurora", "desert", "midnight", "candy", "emerald",
+		"nebula", "sunset", "forest", "twilight", "pastel", "infrared":
 		intensity := 1.0
 		if len(args) >= 1 {
 			intensity = parseFloatArg(args[0], 1)
@@ -354,6 +356,43 @@ func applyCommand(p *vango.Pipeline, raw string) *vango.Pipeline {
 			sigma = parseFloatArg(args[2], 5)
 		}
 		p = p.TiltShift(focusY, bandW, sigma)
+	case "dreamscape", "dream":
+		sigma := 4.0
+		intensity := 0.75
+		if len(args) >= 1 {
+			sigma = parseFloatArg(args[0], 4)
+		}
+		if len(args) >= 2 {
+			intensity = parseFloatArg(args[1], 0.75)
+		}
+		p = p.Dreamscape(sigma, intensity)
+	case "vhs", "vhs_glitch", "vhsglitch":
+		amount := 0.7
+		if len(args) >= 1 {
+			amount = parseFloatArg(args[0], 0.7)
+		}
+		p = p.VHSGlitch(amount)
+	case "lightleak", "light_leak":
+		cx, cy, radius, intensity := 0.12, 0.18, 0.65, 0.75
+		if len(args) >= 1 {
+			cx = parseFloatArg(args[0], 0.12)
+		}
+		if len(args) >= 2 {
+			cy = parseFloatArg(args[1], 0.18)
+		}
+		if len(args) >= 3 {
+			radius = parseFloatArg(args[2], 0.65)
+		}
+		if len(args) >= 4 {
+			intensity = parseFloatArg(args[3], 0.75)
+		}
+		p = p.LightLeak(cx, cy, radius, intensity)
+	case "kaleidoscope":
+		sectors := 8
+		if len(args) >= 1 {
+			sectors = parseIntArg(args[0], 8)
+		}
+		p = p.Kaleidoscope(sectors)
 	case "colortemperature", "color_temperature":
 		if len(args) >= 1 {
 			p = p.ColorTemperature(parseFloatArg(args[0], 0))
