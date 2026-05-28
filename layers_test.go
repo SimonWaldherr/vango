@@ -357,6 +357,7 @@ func TestCreativeEffectsPreserveSizeAndAlpha(t *testing.T) {
 		out  *image.NRGBA
 	}{
 		{"dreamscape", Dreamscape(img, 2, 0.8)},
+		{"dreamscape_default", Dreamscape(img, 4, 0.75)},
 		{"vhs", VHSGlitch(img, 0.6)},
 		{"light_leak", LightLeak(img, 0.1, 0.2, 0.7, 0.8)},
 		{"kaleidoscope", Kaleidoscope(img, 6)},

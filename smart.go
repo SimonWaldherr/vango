@@ -263,7 +263,7 @@ func ModernFilter(src image.Image, name string, intensity float64) *image.NRGBA 
 		}
 	})
 	switch name {
-	case "cinematic", "lomo", "nebula", "twilight":
+	case "cinematic", "lomo", "twilight":
 		out = Vignette(out, 0.25*intensity)
 	case "noir", "midnight":
 		out = Vignette(out, 0.18*intensity)
@@ -326,6 +326,12 @@ func (p *Pipeline) ModernFilter(name string, intensity float64) *Pipeline {
 	}})
 	return p
 }
+
+const (
+	infraredHueShift       = 0.06
+	infraredSaturationGain = 0.42
+	infraredLightnessBoost = 0.14
+)
 
 func luma8(r, g, b uint8) float64 {
 	return 0.2126*float64(r) + 0.7152*float64(g) + 0.0722*float64(b)
@@ -521,15 +527,17 @@ func applyModernLook(r, g, b uint8, name string, intensity float64) (uint8, uint
 		s = clampF01(s * (1 - 0.22*intensity))
 		l = clampF01(l + 0.075*intensity)
 		l = contrastLightness(l, 1-0.06*intensity)
+	// Infrared uses a stronger false-color remap so the effect reads clearly
+	// even on mid-tone images, then nudges hue/saturation for a stylized finish.
 	case "infrared":
 		lum := 0.38*rf + 0.50*gf + 0.12*bf
 		rf = clampF01(0.95 - 0.65*lum + 0.10*rf)
 		gf = clampF01(0.08 + 0.30*lum + 0.10*gf)
 		bf = clampF01(0.88 - 0.72*lum + 0.10*bf)
 		h, s, l = rgbToHSL(rf, gf, bf)
-		h = math.Mod(h+0.06*intensity, 1)
-		s = clampF01(s * (1 + 0.42*intensity))
-		l = contrastLightness(l, 1+0.14*intensity)
+		h = math.Mod(h+infraredHueShift*intensity, 1)
+		s = clampF01(s * (1 + infraredSaturationGain*intensity))
+		l = contrastLightness(l, 1+infraredLightnessBoost*intensity)
 	default:
 		return r, g, b
 	}
