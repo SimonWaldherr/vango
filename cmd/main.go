@@ -272,7 +272,8 @@ func applyCommand(p *vango.Pipeline, raw string) *vango.Pipeline {
 		}
 	case "cinematic", "teal_orange", "tealorange", "matte", "noir", "lomo", "chrome", "fade", "punch",
 		"golden_hour", "goldenhour", "moody", "clean", "portrait", "cyberpunk",
-		"aurora", "desert", "midnight", "candy", "emerald":
+		"aurora", "desert", "midnight", "candy", "emerald",
+		"nebula", "sunset", "forest", "twilight", "pastel", "infrared":
 		intensity := 1.0
 		if len(args) >= 1 {
 			intensity = parseFloatArg(args[0], 1)

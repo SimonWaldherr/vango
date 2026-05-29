@@ -1,6 +1,7 @@
 package vango
 
 import (
+	"bytes"
 	"image"
 	"image/color"
 	"testing"
@@ -98,6 +99,12 @@ func TestModernFilterNamesIncludesNewLooks(t *testing.T) {
 		"midnight":    false,
 		"candy":       false,
 		"emerald":     false,
+		"nebula":      false,
+		"sunset":      false,
+		"forest":      false,
+		"twilight":    false,
+		"pastel":      false,
+		"infrared":    false,
 	}
 	for _, name := range names {
 		if _, ok := want[name]; ok {
@@ -108,5 +115,23 @@ func TestModernFilterNamesIncludesNewLooks(t *testing.T) {
 		if !ok {
 			t.Fatalf("ModernFilterNames missing %q in %v", name, names)
 		}
+	}
+}
+
+func TestNewCreativeModernFiltersChangePixels(t *testing.T) {
+	img := image.NewNRGBA(image.Rect(0, 0, 2, 1))
+	img.Set(0, 0, color.NRGBA{R: 90, G: 140, B: 180, A: 177})
+	img.Set(1, 0, color.NRGBA{R: 230, G: 70, B: 30, A: 177})
+
+	for _, name := range []string{"nebula", "sunset", "forest", "twilight", "pastel", "infrared"} {
+		t.Run(name, func(t *testing.T) {
+			out := ModernFilter(img, name, 1)
+			if out.Pix[3] != 177 {
+				t.Fatalf("%s should preserve alpha, got %d", name, out.Pix[3])
+			}
+			if bytes.Equal(out.Pix, img.Pix) {
+				t.Fatalf("%s did not alter pixel", name)
+			}
+		})
 	}
 }

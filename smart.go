@@ -242,7 +242,8 @@ func SmartCrop(src image.Image, outW, outH int) *image.NRGBA {
 
 // ModernFilter applies named contemporary color looks. Supported names include:
 // cinematic, teal_orange, matte, noir, lomo, chrome, fade, punch, golden_hour,
-// moody, clean, portrait, cyberpunk, aurora, desert, midnight, candy, and emerald.
+// moody, clean, portrait, cyberpunk, aurora, desert, midnight, candy, emerald,
+// nebula, sunset, forest, twilight, pastel, and infrared.
 func ModernFilter(src image.Image, name string, intensity float64) *image.NRGBA {
 	if intensity <= 0 {
 		return ToNRGBA(src)
@@ -262,7 +263,7 @@ func ModernFilter(src image.Image, name string, intensity float64) *image.NRGBA 
 		}
 	})
 	switch name {
-	case "cinematic", "lomo":
+	case "cinematic", "lomo", "twilight":
 		out = Vignette(out, 0.25*intensity)
 	case "noir", "midnight":
 		out = Vignette(out, 0.18*intensity)
@@ -276,6 +277,7 @@ func ModernFilterNames() []string {
 		"cinematic", "teal_orange", "matte", "noir", "lomo", "chrome", "fade",
 		"punch", "golden_hour", "moody", "clean", "portrait", "cyberpunk",
 		"aurora", "desert", "midnight", "candy", "emerald",
+		"nebula", "sunset", "forest", "twilight", "pastel", "infrared",
 	}
 }
 
@@ -324,6 +326,12 @@ func (p *Pipeline) ModernFilter(name string, intensity float64) *Pipeline {
 	}})
 	return p
 }
+
+const (
+	infraredHueShift       = 0.06
+	infraredSaturationGain = 0.42
+	infraredLightnessBoost = 0.14
+)
 
 func luma8(r, g, b uint8) float64 {
 	return 0.2126*float64(r) + 0.7152*float64(g) + 0.0722*float64(b)
@@ -489,6 +497,47 @@ func applyModernLook(r, g, b uint8, name string, intensity float64) (uint8, uint
 		h = math.Mod(h+0.012*intensity, 1)
 		s = clampF01(s * (1 + 0.14*intensity))
 		l = contrastLightness(l, 1+0.14*intensity)
+	case "nebula":
+		rf, gf, bf = splitTone(rf, gf, bf, [3]float64{0.12, 0.02, 0.18}, [3]float64{0.06, 0.14, 0.22}, 0.38*intensity)
+		h, s, l = rgbToHSL(rf, gf, bf)
+		h = math.Mod(h+0.035*intensity, 1)
+		s = clampF01(s * (1 + 0.20*intensity))
+		l = clampF01(0.055*intensity + l*(1-0.08*intensity))
+	case "sunset":
+		rf, gf, bf = splitTone(rf, gf, bf, [3]float64{0.10, 0.03, 0.00}, [3]float64{0.38, 0.16, -0.04}, 0.36*intensity)
+		h, s, l = rgbToHSL(rf, gf, bf)
+		h = math.Mod(h-0.018*intensity+1, 1)
+		s = clampF01(s * (1 + 0.18*intensity))
+		l = clampF01(l + 0.025*intensity)
+	case "forest":
+		rf, gf, bf = splitTone(rf, gf, bf, [3]float64{-0.02, 0.12, 0.05}, [3]float64{0.10, 0.16, 0.02}, 0.34*intensity)
+		h, s, l = rgbToHSL(rf, gf, bf)
+		h = math.Mod(h+0.018*intensity, 1)
+		s = clampF01(s * (1 + 0.10*intensity))
+		l = contrastLightness(l, 1+0.14*intensity)
+	case "twilight":
+		rf, gf, bf = splitTone(rf, gf, bf, [3]float64{0.06, 0.00, 0.16}, [3]float64{0.18, 0.08, 0.30}, 0.40*intensity)
+		h, s, l = rgbToHSL(rf, gf, bf)
+		h = math.Mod(h+0.052*intensity, 1)
+		s = clampF01(s * (1 + 0.22*intensity))
+		l = contrastLightness(l, 1+0.18*intensity)
+	case "pastel":
+		rf, gf, bf = splitTone(rf, gf, bf, [3]float64{0.14, 0.10, 0.08}, [3]float64{0.20, 0.18, 0.16}, 0.30*intensity)
+		h, s, l = rgbToHSL(rf, gf, bf)
+		s = clampF01(s * (1 - 0.22*intensity))
+		l = clampF01(l + 0.075*intensity)
+		l = contrastLightness(l, 1-0.06*intensity)
+	// Infrared uses a stronger false-color remap so the effect reads clearly
+	// even on mid-tone images, then nudges hue/saturation for a stylized finish.
+	case "infrared":
+		lum := 0.38*rf + 0.50*gf + 0.12*bf
+		rf = clampF01(0.95 - 0.65*lum + 0.10*rf)
+		gf = clampF01(0.08 + 0.30*lum + 0.10*gf)
+		bf = clampF01(0.88 - 0.72*lum + 0.10*bf)
+		h, s, l = rgbToHSL(rf, gf, bf)
+		h = math.Mod(h+infraredHueShift*intensity, 1)
+		s = clampF01(s * (1 + infraredSaturationGain*intensity))
+		l = contrastLightness(l, 1+infraredLightnessBoost*intensity)
 	default:
 		return r, g, b
 	}

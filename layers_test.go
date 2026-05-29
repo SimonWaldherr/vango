@@ -357,6 +357,7 @@ func TestCreativeEffectsPreserveSizeAndAlpha(t *testing.T) {
 		out  *image.NRGBA
 	}{
 		{"dreamscape", Dreamscape(img, 2, 0.8)},
+		{"dreamscape_default", Dreamscape(img, 4, 0.75)},
 		{"vhs", VHSGlitch(img, 0.6)},
 		{"light_leak", LightLeak(img, 0.1, 0.2, 0.7, 0.8)},
 		{"kaleidoscope", Kaleidoscope(img, 6)},
@@ -426,8 +427,9 @@ func TestEffectNamesContainsNew(t *testing.T) {
 	names := EffectNames()
 	want := []string{"sharpen", "clarity", "levels", "motion_blur", "glow", "halftone",
 		"oil_painting", "chromatic_aberration", "bilateral", "tilt_shift", "color_temperature",
-		"flip_x", "flip_y", "dreamscape", "vhs", "light_leak", "kaleidoscope",
-		"aurora", "desert", "midnight", "candy", "emerald"}
+		"flip_x", "flip_y", "nebula", "vhs", "light_leak", "kaleidoscope",
+		"aurora", "desert", "midnight", "candy", "emerald",
+		"sunset", "forest", "twilight", "pastel", "infrared"}
 	nameSet := make(map[string]bool)
 	for _, n := range names {
 		nameSet[n] = true

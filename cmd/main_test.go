@@ -116,6 +116,12 @@ func TestApplyCommandModernFilters(t *testing.T) {
 		"midnight 0.6",
 		"candy 0.6",
 		"emerald 0.6",
+		"nebula 0.6",
+		"sunset 0.6",
+		"forest 0.6",
+		"twilight 0.6",
+		"pastel 0.6",
+		"infrared 0.6",
 	} {
 		out := applyCommand(vango.From(img), cmd).Image()
 		if got := out.Bounds().Size(); got.X != 20 || got.Y != 12 {

@@ -282,8 +282,8 @@ The `.vango` project format preserves:
 - `charcoal [radius] [sigma]` — charcoal sketch effect
 - `sketch [sigma] [angle]` — pencil sketch
 - `kuwahara [radius]` — Kuwahara edge-preserving filter
-- `filter <cinematic|teal_orange|matte|noir|lomo|chrome|fade|punch|golden_hour|moody|clean|portrait|cyberpunk|aurora|desert|midnight|candy|emerald> [intensity]`
-- direct aliases: `cinematic`, `teal_orange`, `matte`, `noir`, `lomo`, `chrome`, `fade`, `punch`, `golden_hour`, `moody`, `clean`, `portrait`, `cyberpunk`, `aurora`, `desert`, `midnight`, `candy`, `emerald`
+- `filter <cinematic|teal_orange|matte|noir|lomo|chrome|fade|punch|golden_hour|moody|clean|portrait|cyberpunk|aurora|desert|midnight|candy|emerald|nebula|sunset|forest|twilight|pastel|infrared> [intensity]`
+- direct aliases: `cinematic`, `teal_orange`, `matte`, `noir`, `lomo`, `chrome`, `fade`, `punch`, `golden_hour`, `moody`, `clean`, `portrait`, `cyberpunk`, `aurora`, `desert`, `midnight`, `candy`, `emerald`, `nebula`, `sunset`, `forest`, `twilight`, `pastel`, `infrared`
 
 ### Retouching
 - `dodge <amount> [shadows|midtones|highlights]`

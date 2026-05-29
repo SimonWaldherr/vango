@@ -800,7 +800,7 @@ func BilateralFilter(src image.Image, sigmaSpatial, sigmaRange float64) *image.N
 // Creative effects
 // --------------------------------------------------------------------------
 
-// Dreamscape adds a soft pastel glow while preserving image detail.
+// Dreamscape adds a soft pastel glow while softly blending image detail.
 func Dreamscape(src image.Image, blurSigma, intensity float64) *image.NRGBA {
 	if blurSigma <= 0 {
 		blurSigma = 4
